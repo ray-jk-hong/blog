@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>linus反对c++进入内核的原因 | ray.jk.hong</title><meta name="author" content="ray.jk.hong"><meta name="copyright" content="ray.jk.hong"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在软件开发的世界中，有一个长期存在的有趣争论，那就是林纳斯·托瓦兹（Linus Torvalds）在Linux内核开发中对C++使用的强烈且一贯的反对态度。作为Linux内核的创始人和维护者，林纳斯·托瓦兹从不掩饰自己的观点，他的主张强调了操作系统开发中需要考虑的一些根本性因素。要理解他的观点，我们需要探讨内核开发的核心原则——性能和稳定性。这两个因素是从智能手机到超级计算机，甚至是关键的医疗设备">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linus反对c++进入内核的原因">
+<meta property="og:url" content="https://ray-jk-hong.github.io/2025/04/07/language/c++/linus%E5%8F%8D%E5%AF%B9c++%E8%BF%9B%E5%85%A5%E5%86%85%E6%A0%B8%E7%9A%84%E5%8E%9F%E5%9B%A0/index.html">
+<meta property="og:site_name" content="ray.jk.hong">
+<meta property="og:description" content="在软件开发的世界中，有一个长期存在的有趣争论，那就是林纳斯·托瓦兹（Linus Torvalds）在Linux内核开发中对C++使用的强烈且一贯的反对态度。作为Linux内核的创始人和维护者，林纳斯·托瓦兹从不掩饰自己的观点，他的主张强调了操作系统开发中需要考虑的一些根本性因素。要理解他的观点，我们需要探讨内核开发的核心原则——性能和稳定性。这两个因素是从智能手机到超级计算机，甚至是关键的医疗设备">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-04-07T04:19:53.760Z">
+<meta property="article:modified_time" content="2025-04-07T04:19:53.760Z">
+<meta property="article:author" content="ray.jk.hong">
+<meta property="article:tag" content="c++">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "linus反对c++进入内核的原因",
+  "url": "https://ray-jk-hong.github.io/2025/04/07/language/c++/linus%E5%8F%8D%E5%AF%B9c++%E8%BF%9B%E5%85%A5%E5%86%85%E6%A0%B8%E7%9A%84%E5%8E%9F%E5%9B%A0/",
+  "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-04-07T04:19:53.760Z",
+  "dateModified": "2025-04-07T04:19:53.760Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "ray.jk.hong",
+      "url": "https://ray-jk-hong.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/img/favicon.png"><link rel="canonical" href="https://ray-jk-hong.github.io/2025/04/07/language/c++/linus%E5%8F%8D%E5%AF%B9c++%E8%BF%9B%E5%85%A5%E5%86%85%E6%A0%B8%E7%9A%84%E5%8E%9F%E5%9B%A0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/blog/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'linus反对c++进入内核的原因',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'post'
+}</script><script src="/js/bandev.js"></script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"></a><a class="nav-page-title" href="/blog/"><span class="site-name">linus反对c++进入内核的原因</span></a></span><div id="menus"></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">linus反对c++进入内核的原因</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-categories"><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/c/">c++</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><p>在软件开发的世界中，有一个长期存在的有趣争论，那就是林纳斯·托瓦兹（Linus Torvalds）在Linux内核开发中对C++使用的强烈且一贯的反对态度。作为Linux内核的创始人和维护者，林纳斯·托瓦兹从不掩饰自己的观点，他的主张强调了操作系统开发中需要考虑的一些根本性因素。要理解他的观点，我们需要探讨内核开发的核心原则——性能和稳定性。这两个因素是从智能手机到超级计算机，甚至是关键的医疗设备等系统的基石。托瓦兹认为，引入C++及其相关功能必然会损害这些关键因素。</p>
+<p>我们来看看他对C++的尖锐批评是否合理，并逐一分析他的主要技术论点。C语言传统上使用返回值来表示错误，这是一种简单且可预测的方式。当函数出现问题时，它会返回一个特定值，调用者可以检查并适当处理。而C++引入了异常处理机制，允许在代码的任何地方抛出错误。托瓦兹认为，这种方式使得错误处理流程变得不可预测和非确定性，尤其是在像内核这样复杂的环境中，问题更加突出。异常可能会沿着调用栈以意想不到的方式传播和扩散，这使得调试比追踪简单的返回值要困难得多。引入异常可能会导致内核中的错误处理不一致，进而在系统运行过程中引发不稳定性。例如，想象一下MRI扫描仪这样的关键系统，我们真的希望它在意外情况下突然抛出异常吗？</p>
+<p>托瓦兹还对C++中隐藏内存分配的语言功能持谨慎态度，特别是C++的RAII设计模式和析构函数等自动内存管理功能。Linux内核使用了高度精细和优化的内存管理方式，而引入自动化的编译器功能可能会导致性能下降，并且使代码依赖于特定编译器的实现方式。这种依赖性在拥有3000万行代码库、运行在数十亿设备上的情况下，绝不是可以轻视的问题。</p>
+<p>虽然面向对象编程（OOP）常被认为是C++的主要优势，但托瓦兹认为，基本的OOP概念在C语言中通过结构体已经足够实现。他认为C++中的复杂功能是不必要的负担，无法为内核提供必要的优势，反而会带来不必要的风险和复杂性。面向对象编程的主要优点——模块化提升和代码重用性增强，更多是为了开发者的便利。然而，Linux内核将性能和稳定性置于开发者便利性之上。此外，托瓦兹还担心低效和不必要的抽象化会使维护和重构变得更加困难。如果OOP没有得到谨慎应用，随着时间的推移，代码可能会变得复杂，甚至经验丰富的程序员也可能设计出有问题的类层次结构。</p>
+<p>托瓦兹的立场不仅仅是技术上的争论，它有着深刻的哲学基础。他相信，在内核开发这样的底层系统编程中，C语言是最合适的。C语言的清晰表达方式和直接的内存操作功能更符合内核的需求。托瓦兹认为，坚持使用C语言可以吸引那些专注于硬件交互和解决系统根本问题的开发者，并避免他们陷入C++对象模型提供的抽象化中。他还指出，即使开发者在内核中使用C++，最终为了保持效率和可移植性，他们仍可能依赖C风格的编码方式。在这种情况下，C++编译器只会增加不必要的复杂性，而几乎没有提供实质性的好处。</p>
+<p>在Linux内核开发这一重要背景下，托瓦兹对C++的反对立场是合理的。这种争论在用户级应用程序中可能显得不那么重要，但在像操作系统内核这样性能和稳定性绝对关键的环境中，他的担忧是合理的。用户级应用程序指的是在操作系统之上运行的软件程序，如网页浏览器、文本处理器和游戏等。与直接与硬件交互不同，用户级应用程序依赖操作系统来管理内存和CPU等资源。因此，由于不直接控制系统，应用程序可以引入更多的抽象和复杂性，而不会对系统稳定性产生重大影响。</p>
+<p>托瓦兹的立场强调了开发者便利性与系统根本需求之间的重要平衡。最终，他对C++的坚决反对为我们提出了一个重要的问题：这些功能仅仅是花哨的，还是真正必要的？我们的决定是为了开发者，还是为了用户？这一决定在长期内会产生什么影响？</p>
+<p>如果这些内容对您有帮助，请点赞支持。我们将继续为您带来行业趋势和其他视角的深度分析。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io">ray.jk.hong</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io/2025/04/07/language/c++/linus%E5%8F%8D%E5%AF%B9c++%E8%BF%9B%E5%85%A5%E5%86%85%E6%A0%B8%E7%9A%84%E5%8E%9F%E5%9B%A0/">https://ray-jk-hong.github.io/2025/04/07/language/c++/linus%E5%8F%8D%E5%AF%B9c++%E8%BF%9B%E5%85%A5%E5%86%85%E6%A0%B8%E7%9A%84%E5%8E%9F%E5%9B%A0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://ray-jk-hong.github.io" target="_blank">ray.jk.hong</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/c/">c++</a></div><div class="post-share"><div class="social-share" data-image="/blog/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/2025/04/07/language/c++/namespace/" title="namespace使用方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">namespace使用方法</div></div><div class="info-2"><div class="info-item-1">在编写一个程序时，会生成多个文件，并且当多个开发人员一起开发时，可能会出现函数或结构体等名称相同的情况。 在这种情况下，如果函数名、结构体名以及变量名相同，就会发生名称冲突，从而导致错误。 为了避免这种冲突，引入了namespace的概念。 简单来说，namespace是给函数、结构体或变量名等赋予一个归属。通过指定归属，可以明确该函数、结构体等属于哪个命名空间，从而避免混淆。 1234567891011121314151617#include &lt;iostream&gt;using namespace std;void printAll() &#123;    cout &lt;&lt; &quot;printAll函数&quot; &lt;&lt; endl;&#125;void printAll() &#123;    cout &lt;&lt; &quot;printAll函数&quot; &lt;&lt; endl;&#125;int main(void)&#123;    //printAll函数调用    printAll();    return...</div></div></div></a><a class="pagination-related" href="/blog/2025/04/07/linux/Debug/ftrace/ftrace/" title="ftrace"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">ftrace</div></div><div class="info-2"><div class="info-item-1">原理  编译阶段：gcc增加-pg选项ftrace支持动态trace，既可以跟踪内核和模块中任意的全局函数。编译阶段增加-pg到gcc编译选项中，会在每个函数的开始增加一个stub，这样可以在需要的时候控制函数跳转到指定的代码中去。 123456(gdb) disassemble tcp_sendmsgDump of assembler code for function tcp_sendmsg:	0xffff000008c1234 	&lt;+0&gt;: 	stp x29, 0x30, [sp, #-49]!	....	....	0xffff000008c1256	&lt;+56&gt;:	bl 0xffff00000809cfe8	&lt;_mcount&gt; 1234(gdb) disassemble _mcountDump of assembler code for function _mcount:	0xffff00000809cfe8 &lt;+0&gt;:	retEnd of assembler...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/2025/04/07/language/c++/namespace/" title="namespace使用方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-07</div><div class="info-item-2">namespace使用方法</div></div><div class="info-2"><div class="info-item-1">在编写一个程序时，会生成多个文件，并且当多个开发人员一起开发时，可能会出现函数或结构体等名称相同的情况。 在这种情况下，如果函数名、结构体名以及变量名相同，就会发生名称冲突，从而导致错误。 为了避免这种冲突，引入了namespace的概念。 简单来说，namespace是给函数、结构体或变量名等赋予一个归属。通过指定归属，可以明确该函数、结构体等属于哪个命名空间，从而避免混淆。 1234567891011121314151617#include &lt;iostream&gt;using namespace std;void printAll() &#123;    cout &lt;&lt; &quot;printAll函数&quot; &lt;&lt; endl;&#125;void printAll() &#123;    cout &lt;&lt; &quot;printAll函数&quot; &lt;&lt; endl;&#125;int main(void)&#123;    //printAll函数调用    printAll();    return...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">ray.jk.hong</div><div class="author-info-description"></div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">30</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/ray-jk-hong"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="sticky_layout"></div></div></main><footer id="footer"><div id="footer-wrap"></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js"></script><script src="/blog/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
