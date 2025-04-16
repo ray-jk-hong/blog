@@ -1,0 +1,341 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>spinlock注意点 | ray.jk.hong</title><meta name="author" content="ray.jk.hong"><meta name="copyright" content="ray.jk.hong"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="介绍Spinlock是内核驱动编程关键难点之一，相比mutex锁，spinlock的死锁问题更为隐蔽，定位依赖复现，更难定位，也更难以掌握，死锁会造成系统直接挂死，问题影响大。那么为啥相较mutex锁，spinlock锁的死锁问题更难定位及排查呢？大家是不是注意到我们平时从来几乎没有遇到过mutex锁的攻关问题？原因在这里：mutex锁的理解及应用是“一维”的，而spinlock锁的是“二维”的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="spinlock注意点">
+<meta property="og:url" content="https://ray-jk-hong.github.io/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/index.html">
+<meta property="og:site_name" content="ray.jk.hong">
+<meta property="og:description" content="介绍Spinlock是内核驱动编程关键难点之一，相比mutex锁，spinlock的死锁问题更为隐蔽，定位依赖复现，更难定位，也更难以掌握，死锁会造成系统直接挂死，问题影响大。那么为啥相较mutex锁，spinlock锁的死锁问题更难定位及排查呢？大家是不是注意到我们平时从来几乎没有遇到过mutex锁的攻关问题？原因在这里：mutex锁的理解及应用是“一维”的，而spinlock锁的是“二维”的。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-04-16T11:04:07.891Z">
+<meta property="article:modified_time" content="2025-04-16T11:04:07.891Z">
+<meta property="article:author" content="ray.jk.hong">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "spinlock注意点",
+  "url": "https://ray-jk-hong.github.io/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/",
+  "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-04-16T11:04:07.891Z",
+  "dateModified": "2025-04-16T11:04:07.891Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "ray.jk.hong",
+      "url": "https://ray-jk-hong.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/img/favicon.png"><link rel="canonical" href="https://ray-jk-hong.github.io/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/blog/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'spinlock注意点',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><script src="/js/bandev.js"></script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"></a><a class="nav-page-title" href="/blog/"><span class="site-name">spinlock注意点</span></a></span><div id="menus"></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">spinlock注意点</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-categories"><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/linux/">linux</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>Spinlock是内核驱动编程关键难点之一，相比mutex锁，spinlock的死锁问题更为隐蔽，定位依赖复现，更难定位，也更难以掌握，死锁会造成系统直接挂死，问题影响大。那么为啥相较mutex锁，spinlock锁的死锁问题更难定位及排查呢？<br>大家是不是注意到我们平时从来几乎没有遇到过mutex锁的攻关问题？<br>原因在这里：mutex锁的理解及应用是“一维”的，而spinlock锁的是“二维”的。说mutex锁的理解及应用是“一维”的，是因为它一般只用于保护线程和线程之间的并发，且不是自旋死等CPU的，所以可以简单的理解为“锁代码”，<br>也就是说只需要考虑对代码片段这一个因素（即一维）进行互斥，使用非常简单，我们基本只需要关注lock-&gt;unlock是否配对。（这里为了突出“一维”，说法有点错误，mutex的使用也有很多注意点，如因为他是sleep-&gt;waiting的，会有上下文切换，对调度确定性性能敏感、禁止上下文切换的场景不能使用，关于mutex的使用后续补充一个帖子）。<br>而说spinlock锁是“二维”的，是因为除了考虑“锁代码”这个因素外，还需要考虑spinlock锁内不可以调度出去，并且提供了禁止线程抢占&#x2F;禁止软中断&#x2F;禁止硬中断的能力，因此还需要结合各种执行上下文组合互斥的应用场景选用不同的spinlock族的锁。<br>前面这句话有点拗口，我们会用一系列的短博客+checklist+示意图的方式帮助大家快速掌握spinlock锁的排查方法，定位方法，原理，设计原则等。</p>
+<h2 id="特点及使用限制"><a href="#特点及使用限制" class="headerlink" title="特点及使用限制"></a>特点及使用限制</h2><ol>
+<li>spinlock属于忙等型的锁<br>我们熟知的mutex&#x2F;semaphore都属于睡眠类型的锁，即在获取不到锁的时候会进入睡眠。但spinlock属于忙等，即在获取不到锁的时候会持续忙等(spin即旋转的意思)，所以获取锁的速度也是比睡眠锁快。mutex在获取不到锁的时候会进入睡眠，会有ms量级的抖动。<br>2.spinlock能保护所有上下文访问的临界区<br>（1）硬中断，软中断在内部函数都绝对禁止进程切换或者睡眠，所以mutex等睡眠锁不能被用于硬中断，软中断上下文。<br>（2）spinlock不会睡眠，且可以禁止进程抢占，禁止软中断，禁止硬中断，所以有能力保护所有上下文访问的临界区。<br>（3）普通线程上下文也可以使用spinlock锁提高执行性能。<br>3.spinlock锁使用限制<br>（1）spinlock是忙等，所以在spinlock锁内部不能耗时太长，会导致其他CPU忙等导致CPU利用率飙升。<br>（2）spinlock内部不能出现进程切换，睡眠操作。内核驱动常常使用到的接口中，有进程切换和睡眠的操作查看。</li>
+</ol>
+<h2 id="常见执行上下文"><a href="#常见执行上下文" class="headerlink" title="常见执行上下文"></a>常见执行上下文</h2><p>我们在使用spinlock锁进行临界区保护时，第一步永远是梳理出到底哪些执行上下文会并发访问这个数据，这个是用对spinlock锁的先决条件。<br>下列表中汇总了驱动常用的回调注册接口及对应执行上下文，大家熟记，不一定很全，大家有新的执行上下文欢迎在帖子上留言讨论，持续刷新。</p>
+<table>
+<thead>
+<tr>
+<th>上下文类型</th>
+<th>注册函数、上下文特征</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>线程上下文</td>
+<td>ioctl、内核线程、workqueue等</td>
+</tr>
+<tr>
+<td>硬中断（hardirq）上下文</td>
+<td>request_irq&#x2F; devm_request_irq&#x2F;…</td>
+</tr>
+<tr>
+<td>软中断（softirq）上下文</td>
+<td>timer_setup&#x2F; hrtimer_start&#x2F;…</td>
+</tr>
+<tr>
+<td>tasklet上下文</td>
+<td>tasklet_init&#x2F;…</td>
+</tr>
+</tbody></table>
+<h2 id="常用的spinlock锁"><a href="#常用的spinlock锁" class="headerlink" title="常用的spinlock锁"></a>常用的spinlock锁</h2><p>spinlock能够保护线程，软中断，硬中断之间的临界区。spinlock需要保证同一时刻只能被一个内核代码路径持有锁，而且还需要有禁止进程抢占&#x2F;禁止软中断&#x2F;禁止硬中断的能力。<br>spinlock锁除了提供基本的互斥保护外，还提供了禁抢占、禁中断等额外的操作，提供了丰富的接口完成相关的工作。</p>
+<table>
+<thead>
+<tr>
+<th>函数接口</th>
+<th>频率</th>
+<th>特征说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>spin_lock&#x2F;spin_unlock</td>
+<td>常用</td>
+<td>禁止本CPU进程抢占&#x2F;使能进程抢占</td>
+</tr>
+<tr>
+<td>spin_lock_bh&#x2F; spin_unlock_bh</td>
+<td>常用</td>
+<td>禁止本CPU软中断&#x2F;使能软中断</td>
+</tr>
+<tr>
+<td>spin_lock_irq&#x2F;spin_unlock_irq</td>
+<td>常用</td>
+<td>禁止本CPU硬中断&#x2F;使能硬中断</td>
+</tr>
+<tr>
+<td>spin_lock_irqsave&#x2F; spin_unlock_irqrestore</td>
+<td>常用</td>
+<td>禁止本CPU中断并保存状态&#x2F;使能并恢复</td>
+</tr>
+<tr>
+<td>spin_trylock&#x2F;spin_unlock</td>
+<td>常用</td>
+<td>尝试拿锁，拿到后行为和spin_lock一致</td>
+</tr>
+<tr>
+<td>spin_trylock_bh&#x2F;spin_unlock_bh</td>
+<td>一般</td>
+<td>尝试拿锁，拿到后行为和spin_lock_bh一致</td>
+</tr>
+<tr>
+<td>spin_trylock_irq&#x2F;spin_unlock_irq</td>
+<td>一般</td>
+<td>尝试拿锁，拿到后行为和spin_lock_irq一致</td>
+</tr>
+<tr>
+<td>read_lock&#x2F;read_unlock</td>
+<td>一般</td>
+<td>spinlock读锁</td>
+</tr>
+<tr>
+<td>write_lock&#x2F;write_unlock</td>
+<td>一般</td>
+<td>spinlock写锁</td>
+</tr>
+</tbody></table>
+<h2 id="什么接口不能在spinlock内部使用"><a href="#什么接口不能在spinlock内部使用" class="headerlink" title="什么接口不能在spinlock内部使用"></a>什么接口不能在spinlock内部使用</h2><table>
+<thead>
+<tr>
+<th>函数类别</th>
+<th>函数列表</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>线程切换</td>
+<td>schedule</td>
+</tr>
+<tr>
+<td>打印</td>
+<td>printk</td>
+</tr>
+<tr>
+<td>睡眠函数</td>
+<td>sleep&#x2F;msleep&#x2F;usleep&#x2F;…</td>
+</tr>
+<tr>
+<td>睡眠锁</td>
+<td>mutex&#x2F;semaphore&#x2F;…</td>
+</tr>
+<tr>
+<td>内存申请释放</td>
+<td>kmalloc&#x2F;vmalloc&#x2F;vfree&#x2F;alloc_pages&#x2F;…</td>
+</tr>
+<tr>
+<td>dma相关函数</td>
+<td>dma_alloc_coherent&#x2F;…</td>
+</tr>
+<tr>
+<td>tasklet相关函数</td>
+<td>tasklet_kill&#x2F;…</td>
+</tr>
+<tr>
+<td>内存映射函数</td>
+<td>ioremap&#x2F;iounmap&#x2F;vmap&#x2F;vunmap&#x2F;remove_vma&#x2F;remap_pfn&#x2F;…</td>
+</tr>
+<tr>
+<td>事件等待类函数</td>
+<td>wait_event&#x2F;wait_event_interruptible&#x2F;wait_for_completion&#x2F;…</td>
+</tr>
+<tr>
+<td>信号量</td>
+<td>down_write&#x2F;down_read&#x2F;…</td>
+</tr>
+<tr>
+<td>用户态&lt;-&gt;内核态拷贝</td>
+<td>copy_from_user&#x2F;copy_to_user&#x2F;get_user&#x2F;put_user&#x2F;…</td>
+</tr>
+<tr>
+<td>文件操作函数</td>
+<td>vfs_open&#x2F;vfs_close&#x2F;vfs_read&#x2F;vfs_write&#x2F;filp_open&#x2F;filp_close&#x2F;kernel_read&#x2F;kernel_write&#x2F;…</td>
+</tr>
+</tbody></table>
+<h2 id="不同上线文中使用spinlock注意点"><a href="#不同上线文中使用spinlock注意点" class="headerlink" title="不同上线文中使用spinlock注意点"></a>不同上线文中使用spinlock注意点</h2><p>各种执行上下文并发组合下spinlock加锁注意点：</p>
+<ol>
+<li>进程&lt;-&gt;软中断（softirq）并发时，进程使用spin_lock锁保护<br>图示：</li>
+</ol>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock-1.png" class="" title="图片描述">
+<p>原因：由于spin_lock不能禁止软中断和硬中断，进程在访问临界区时，被软中断打断会造成死锁。<br>红线2：进程&lt;-&gt;tasklet并发时，进程使用spin_lock锁保护<br>图示：略<br>原因：tasklet底层由softirq实现，用法和注意点和进程&lt;-&gt;softirq一致<br>红线3：进程&lt;-&gt;硬中断（hardirq）并发时，进程使用spin_lock、spin_lock_bh锁保护<br>图示：略<br>原因：spin_lock、spin_lock_bh没有禁止硬中断，依然可以被打断<br>红线4：软中断（softirq）&lt;-&gt;硬中断（hardirq）并发时，软中断使用spin_lock、spin_lock_bh锁保护<br>图示：略<br>原因：spin_lock、spin_lock_bh没有禁止硬中断，依然可以被打断<br>各上下文并发场景下spinlock锁使用建议：</p>
+<p>1.线程&lt;-&gt;线程并发<br>正确的使用方式：使用spin_lock。<br>2.线程&lt;-&gt;软中断（softirq）并发<br>正确的使用方法：线程必须使用spin_lock_bh，软中断使用spin_lock&#x2F;spin_lock_bh都可以。</p>
+<p>3.线程&lt;-&gt;tasklet并发<br>正确的使用方法：线程必须使用spin_lock_bh，软中断使用spin_lock&#x2F;spin_lock_bh都可以。</p>
+<p>4.tasklet&lt;-&gt;tasklet并发分两种情况<br>（1）同一个tasklet并发<br>正确的使用方法：不需要加锁<br>原因：如下图所示，tasklet可以跑在不同的CPU，但与softirq相比，tasklet保证一个tasklet不会并行跑在不同的CPU上，也不会出现抢占。所以不需要加锁。</p>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock-2.png" class="" title="图片描述">
+
+<p>（2）不同的tasklet并发<br>正确的使用方法：使用spin_lock<br>原因：如下图所示，不同tasklet可以并行跑在不同CPU上，所以需要使用spin_lock来保护临界区。<br>由于临界区只在tasklet访问，而且tasklet保证不会被其他tasklet打断并执行在同一个CPU上，spin_lock_bh是没有必要在这个场景下使用。</p>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock-3.png" class="" title="图片描述">
+
+<p>5.softirq&lt;-&gt;softirq，softirq&lt;-&gt;tasklet并发<br>正确的使用方法：使用spin_lock即可<br>原因：与tasklet不同，不管是不是同一个softirq，softirq都并发跑在不同的CPU上。所以都需要加spin_lock锁来保护。当然这里使用spin_lock_bh也是没有必要的，理由与tasklet一样。</p>
+<p>6.hardirq&lt;-&gt;softirq或hardirq&lt;-&gt;tasklet并发<br>正确的使用方法1：hardirq使用spin_lock，softirq&#x2F;tasklet使用spin_lock_irq防止被中断打断<br>正确的使用方法2：hardirq和softirq都使用spin_lock_irqsave</p>
+<p>7.hardirq&lt;-&gt;hardirq并发<br>正确的使用方法：使用spin_lock_irqsave<br>原因：硬件中断在触发回调函数之前，有没有禁止中断根据平台有差异。</p>
+<h2 id="spinlock嵌套使用注意点"><a href="#spinlock嵌套使用注意点" class="headerlink" title="spinlock嵌套使用注意点"></a>spinlock嵌套使用注意点</h2><p>1、应该从设计的角度尽量避免使用嵌套锁<br>2、spinlock锁的unlock操作伴随着一些“副作用”，导致嵌套使用时出现一些与原来加锁意图相左的情况。<br>红线1：任意上下文之间并发，出现交叉嵌套，会概率出现死锁问题<br>图示：</p>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock-4.png" class="" title="图片描述">
+
+<p>原因：某一时刻，进程1执行到spin_lock_xx(&amp;A)与spin_lock_xx(&amp;B)之间，进程2执行到spin_lock_xx(&amp;B)与spin_lock_xx(&amp;A)之间，出现死锁<br>红线2：线程&lt;-&gt;tasklet&#x2F;softirq并发，任意spinlock锁嵌套使用spin_lock_bh锁，会概率出现死锁问题<br>图示：</p>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock-5.png" class="" title="图片描述">
+<p>原因：spin_lock_bh在进程上下文有tasklet&#x2F;softirq需要执行的时候会直接调用其回调函数。所以在spin_lock_bh外部嵌套使用的spinlock锁在tasklet&#x2F;softirq中出现，会有概率出现死锁。<br>红线3：线程&#x2F;softirq&#x2F;tasklet与hardirq之间并发，spinlock锁内嵌套使用spin_lock_irq锁，会概率出现死锁<br>图示：黄色的spin_lock_xx为spin_lock_irq锁</p>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock-6.png" class="" title="图片描述">
+
+<p>原因：spin_unlock_irq不管之前的中断状态会打开中断。如上图所示，spinlock A内部使用了spin_unlock_irq中断被打开。当前进程被中断打断，且中断上下文使用了spinlock A导致死锁。</p>
+<p>如果非要嵌套使用，需要按照一定嵌套关系嵌套使用：</p>
+<ul>
+<li>spin_lock&#x2F;spin_unlock</li>
+<li>spin_lock_bh&#x2F;spin_unlock_bh</li>
+<li>spin_lock_irq&#x2F;spin_unlock_irq</li>
+<li>spin_lock_irqsave&#x2F;spin_unlock_irqrestore<br>以上4种spinlock锁的严格程度是由弱到强。弱的spinlock类型不能被强的spinlock类型给嵌套。<br>之前有定位过spin_lobk_bh和spin_lock_irq嵌套错误出现的问题。<br>如下图所示，spin_lock_irq套了spin_lock_bh来保护临界区的函数，分别在进程上下文和tasklet中都被调用。</li>
+</ul>
+<img src="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/spinlock%E5%B5%8C%E5%A5%97.png" class="" title="图片描述">
+<p>这样使用会有概率出现死锁，原因是在spin_unlock_bh函数中，会查看当前是否有堆积的tasklet并直接调用do_softirq进行调用，导致spin_lock_irq死锁。</p>
+<h2 id="循环中使用spinlock注意点"><a href="#循环中使用spinlock注意点" class="headerlink" title="循环中使用spinlock注意点"></a>循环中使用spinlock注意点</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (xx) &#123;</span><br><span class="line">    spin_lock_xx();</span><br><span class="line">    func();</span><br><span class="line">    spin_unlock_xx();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>类似上面的代码段，在循环比较大且在某些场景（例如os禁止进程抢断[preempt]）下会出现soft lockup导致挂死。进程需要适当让出进程执行权限，让其他进程执行。要改成如下方式。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (xx) &#123;</span><br><span class="line">    spin_lock_xx();</span><br><span class="line">    func();</span><br><span class="line">    spin_unlock_xx();</span><br><span class="line">    cond_resched();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io">ray.jk.hong</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/">https://ray-jk-hong.github.io/2025/04/16/linux/%E5%86%85%E6%A0%B8%E9%94%81/spinlock%E6%B3%A8%E6%84%8F%E7%82%B9/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://ray-jk-hong.github.io" target="_blank">ray.jk.hong</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/linux/">linux</a></div><div class="post-share"><div class="social-share" data-image="/blog/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E5%90%AF%E5%8A%A8/DTS/DTS/" title="DTS"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">DTS</div></div><div class="info-2"><div class="info-item-1">DTS一般用法编译与反编译 编译命令  1dtc -O dtb -o dest.dtb src.dts   反编译命令  1dtc -I dtb -O dts src.dtb &gt; des.dts 编译工具的代码在scripts&#x2F;dtc目录下。 在环境上查看有时候dtb文件成功加载之后，想在环境查看dtb文件是否与预期相符。有时候漏了include xx.dtsi等文件时，或者加载错误的dtb文件时，可以在环境上查看dtsi文件中的节点是否已经加载。  &#x2F;sys&#x2F;firmware&#x2F;fdt原始dtb文件，如下命令可以查看dtb文内容hexdump -C &#x2F;sys&#x2F;firmware&#x2F;fdt &#x2F;sys&#x2F;firmware&#x2F;devicetree以目录结构程现的dtb文件, 根节点对应base目录, 每一个节点对应一个目录,...</div></div></div></a><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%8A%9F%E8%80%97/Cpufreq/cpufreq/" title="Cpufreq"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Cpufreq</div></div><div class="info-2"><div class="info-item-1">https://www.kernel.org/doc/Documentation/cpu-freq/governors.txt https://www.cnblogs.com/LoyenWang/p/11385811.html </div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/2025/04/15/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/memory%20layout/" title="memory layout"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-15</div><div class="info-item-2">memory layout</div></div><div class="info-2"><div class="info-item-1">memory layoutmemory layout是linux系统看到的整个虚拟地址的布局，对于理解linux内存很重要。下面我们以4K page大小 + 4级页表为例，看一下每一块的起始地址和大小都是哪里定义的。4K page + 4级页表的AArch64 Linux的memory layout如下： 12345678910111213 Start			End			Size		Use ----------------------------------------------------------------------- 0000000000000000	0000ffffffffffff	 256TB		user ffff000000000000	ffff7fffffffffff	 128TB		kernel logical memory map[ffff600000000000	ffff7fffffffffff]	  32TB		[kasan shadow region] ffff800000000000	ffff80007fffffff	  ...</div></div></div></a><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/PageCache/" title="Page Cache"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-16</div><div class="info-item-2">Page Cache</div></div><div class="info-2"><div class="info-item-1">介绍添加有以下几种类型，page在申请之后是需要被添加到page cache中的。  对文件进行mmap之后写（注意是写不是读）的时候会触发缺页申请page并把内容写到page中。该page会被添加到page cache和lru。     对文件进行读的时候，会申请page并将内容保存到page中。page也会被添加到page cache和lru。     匿名页申请的时候提交到swap cache。虽然swap cache也是以page cache为基础，但这里就不多说了，在物理页回收那里讲 shared memory相关的（&#x2F;dev&#x2F;shm），也在页面回收那里讲。  疑问：address_space是什么上下文上的？ 删除参考https://www.cnblogs.com/dongxb/p/18301510 </div></div></div></a><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/" title="内存模型"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-16</div><div class="info-item-2">内存模型</div></div><div class="info-2"><div class="info-item-1">这里所谓的内存模型，其实就是将struct page结构体在linux内存中怎么进行保存。linux中提供了几种。 CONFIG_FLATMEMFLATMEM仅能够用于物理内存连续的场景，且不支持NUMA，不支持内存热插拔。这种模型下，所有的struct page都保存在mem_map开始的数组中。代码如下： 123#define __pfn_to_page(pfn)	(mem_map + ((pfn) - ARCH_PFN_OFFSET))#define __page_to_pfn(page)	((unsigned long)((page) - mem_map) + \				 ARCH_PFN_OFFSET) ARCH_PFN_OFFSET 定义了物理内存起始地址不同于0的系统的第一个页框号。 mem_map的初始化在mm/mm_init.c文件的alloc_node_mem_map函数中。 1234567// mm/mm_init.c文件#ifdef CONFIG_FLATMEMstatic void __init alloc_node_mem_map(struct...</div></div></div></a><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E5%88%9D%E5%A7%8B%E5%8C%96/" title="物理内存初始化"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-16</div><div class="info-item-2">物理内存初始化</div></div><div class="info-2"><div class="info-item-1">物理DDR大小，信息查询dmidecodesudo dmidecode --type memory命令可查看系统中DDR的大小，频率等信息。 123456789101112131415161718192021222324252627282930313233# dmidecode 3.1Getting SMBIOS data from sysfs.SMBIOS 2.6 present.Handle 0x0005, DMI type 16, 15 bytesPhysical Memory Array        Location: System Board Or Motherboard        Use: System Memory        Error Correction Type: None        Maximum Capacity: 16 GB        Error Information Handle: Not Provided        Number Of Devices: 2Handle 0x0006, DMI type 17, 28...</div></div></div></a><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/%E8%BF%9B%E7%A8%8B%E5%86%85%E5%AD%98%E7%BB%9F%E8%AE%A1/" title="进程内存统计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-16</div><div class="info-item-2">进程内存统计</div></div><div class="info-2"><div class="info-item-1">在知道怎么统计进程使用的内存之前，需要知道VSS&#x2F;RSS&#x2F;PSS&#x2F;USS这几个概念。一般进程在执行的时候根据内存使用方式，会有以下几种内存类型。  进程间共享的内存，一般是与其他进程共享的so库加载区域，shmget方式主动共享的。这种是已经被分配的物理内存的了。 进程内使用的内存，且已经分配物理内存的。 进程内使用的内存，但没有分配物理地址的。  上述的1，2，3三种类型的内存对应以下的A, B, C三种类型的内存。   VSS&#x2F;RSS&#x2F;PSS&#x2F;USS就是在统计以上三种类型内存大小的。 VSS：VSS &#x3D; A + B + C就是进程能够访问的所有虚拟内存大小。 RSS: RSS &#x3D; A + B进程实际能访问的物理内存大小（这么描述更准确一些）。 PSS: PSS &#x3D; B + (A &#x2F; 进程数)刚看的时候不知道为什么要提供PSS，但假设有10个进程加载了某个so并共享。那我们是不是将10个进程的PSS值都加起来就能知道整个10个进程一共使用了多少物理内存呢？ USS: USS...</div></div></div></a><a class="pagination-related" href="/blog/2025/04/16/linux/%E5%86%85%E6%A0%B8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%AE%97%E6%B3%95/llist_xxx%E6%8E%A5%E5%8F%A3/" title="llist_xxx免锁链表"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-16</div><div class="info-item-2">llist_xxx免锁链表</div></div><div class="info-2"><div class="info-item-1">llist_xxx在部分使用场景无需锁，可以提高性能。 (1) 不需要加锁的情况：如果&#x3D;&#x3D;有多个生产者和多个消费者&#x3D;&#x3D;，则可以在生产者中使用 llist_add，在消费者中同时&#x3D;&#x3D;使用 llist_del_all，无需锁定&#x3D;&#x3D;。此外，如果&#x3D;&#x3D;单个消费者&#x3D;&#x3D;多个生产者，单个消费者可以使用 &#x3D;&#x3D;llist_del_first&#x3D;&#x3D;，而多个生产者同时使用 llist_add，无需任何锁定。 (2) 需要加锁的情况：如果我们有多个消费者，其中一个消费者使用 llist_del_first, 其他消费者使用 llist_del_first 或 llist_del_all，则需要锁。这是因为 llist_del_first 依赖于 list-&gt;first-&gt;next 不会改变，但是没有锁保护，如果在删除操作中间发生抢占并且被抢占，则无法确定 list-&gt;first 与之前导致 llist_del_first 中的...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">ray.jk.hong</div><div class="author-info-description"></div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">35</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/ray-jk-hong"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%E5%8F%8A%E4%BD%BF%E7%94%A8%E9%99%90%E5%88%B6"><span class="toc-number">2.</span> <span class="toc-text">特点及使用限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E6%89%A7%E8%A1%8C%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-number">3.</span> <span class="toc-text">常见执行上下文</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E7%9A%84spinlock%E9%94%81"><span class="toc-number">4.</span> <span class="toc-text">常用的spinlock锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%8E%A5%E5%8F%A3%E4%B8%8D%E8%83%BD%E5%9C%A8spinlock%E5%86%85%E9%83%A8%E4%BD%BF%E7%94%A8"><span class="toc-number">5.</span> <span class="toc-text">什么接口不能在spinlock内部使用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8D%E5%90%8C%E4%B8%8A%E7%BA%BF%E6%96%87%E4%B8%AD%E4%BD%BF%E7%94%A8spinlock%E6%B3%A8%E6%84%8F%E7%82%B9"><span class="toc-number">6.</span> <span class="toc-text">不同上线文中使用spinlock注意点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#spinlock%E5%B5%8C%E5%A5%97%E4%BD%BF%E7%94%A8%E6%B3%A8%E6%84%8F%E7%82%B9"><span class="toc-number">7.</span> <span class="toc-text">spinlock嵌套使用注意点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BE%AA%E7%8E%AF%E4%B8%AD%E4%BD%BF%E7%94%A8spinlock%E6%B3%A8%E6%84%8F%E7%82%B9"><span class="toc-number">8.</span> <span class="toc-text">循环中使用spinlock注意点</span></a></li></ol></div></div></div></div></main><footer id="footer"><div id="footer-wrap"></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js"></script><script src="/blog/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
