@@ -1,0 +1,244 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Linux调度基础 | ray.jk.hong</title><meta name="author" content="ray.jk.hong"><meta name="copyright" content="ray.jk.hong"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="进程时间周转时间：完成时间 - 到达时间带权周转时间 &#x3D; 周转时间 &#x2F; 运行时间等待时间 &#x3D; 周转时间 - 运行时间 到达时间：进程进入到ready的时间。（ready是进程的一种状态，下面会看到）运行时间：进程从被调度执行到调度出去的时间等待时间（响应时间）：进程进入ready状态到进程被调度到的时间 进程分类 普通进程：   交互进程：前台进程，有IO处理，需要被">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux调度基础">
+<meta property="og:url" content="https://ray-jk-hong.github.io/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/index.html">
+<meta property="og:site_name" content="ray.jk.hong">
+<meta property="og:description" content="进程时间周转时间：完成时间 - 到达时间带权周转时间 &#x3D; 周转时间 &#x2F; 运行时间等待时间 &#x3D; 周转时间 - 运行时间 到达时间：进程进入到ready的时间。（ready是进程的一种状态，下面会看到）运行时间：进程从被调度执行到调度出去的时间等待时间（响应时间）：进程进入ready状态到进程被调度到的时间 进程分类 普通进程：   交互进程：前台进程，有IO处理，需要被">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-05-20T10:49:27.528Z">
+<meta property="article:modified_time" content="2025-05-20T12:14:01.654Z">
+<meta property="article:author" content="ray.jk.hong">
+<meta property="article:tag" content="调度">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Linux调度基础",
+  "url": "https://ray-jk-hong.github.io/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/",
+  "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-05-20T10:49:27.528Z",
+  "dateModified": "2025-05-20T12:14:01.654Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "ray.jk.hong",
+      "url": "https://ray-jk-hong.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/img/favicon.png"><link rel="canonical" href="https://ray-jk-hong.github.io/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/blog/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Linux调度基础',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><script src="/js/bandev.js"></script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"></a><a class="nav-page-title" href="/blog/"><span class="site-name">Linux调度基础</span></a></span><div id="menus"></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">Linux调度基础</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-categories"><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/linux/">linux</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><h2 id="进程时间"><a href="#进程时间" class="headerlink" title="进程时间"></a>进程时间</h2><p>周转时间：完成时间 - 到达时间<br>带权周转时间 &#x3D; 周转时间 &#x2F; 运行时间<br>等待时间 &#x3D; 周转时间 - 运行时间</p>
+<p>到达时间：进程进入到ready的时间。（ready是进程的一种状态，下面会看到）<br>运行时间：进程从被调度执行到调度出去的时间<br>等待时间（响应时间）：进程进入ready状态到进程被调度到的时间</p>
+<h2 id="进程分类"><a href="#进程分类" class="headerlink" title="进程分类"></a>进程分类</h2><ol>
+<li>普通进程：</li>
+</ol>
+<ul>
+<li>交互进程：前台进程，有IO处理，需要被快速唤醒。（也称作IO密集型任务）</li>
+<li>批处理进程：后台进程，一般没有IO，也被称为守护进程。（也称作CPU密集型任务，就是依赖CPU做计算比较多）<br>普通进程类型中，是交互式还是批处理进程，内核是启发式确定的，没有明确指定是哪种类型的方法。交互式进程需要被快速唤醒，所以内核会适当提高一下其优先级。<br>2.实时进程：需要立即得到相应和处理的进程</li>
+</ul>
+<h2 id="进程优先级"><a href="#进程优先级" class="headerlink" title="进程优先级"></a>进程优先级</h2><p>实时进程PR值范围是0-99，数值越大被调度优先级越高。<br>普通进程PR值范围是100-139，数值越小被调度优先级越高。<br>就是说实时进程和普通进程，其优先级接近99和100的时候，优先级越高。</p>
+<p>Nice值只用在普通进程，范围是[-20 : 19]。Nice &#x3D; 120 - 进程优先级。Nice可以翻译为谦让，Nice值越高就越谦让，得到调度的机会就少。Nice值越低，就越不谦让，得到调度的机会就越大，就是爱哭就有奶喝，不爱哭就没奶喝。用户可以通过修改nice值来干预普通进程的优先级，修改之后的优先级 &#x3D; 老的优先级 - Nice值。</p>
+<h2 id="调度算法"><a href="#调度算法" class="headerlink" title="调度算法"></a>调度算法</h2><h3 id="FCFS：先到先服务"><a href="#FCFS：先到先服务" class="headerlink" title="FCFS：先到先服务"></a>FCFS：先到先服务</h3><p>优点：公平性好<br>缺点：在长短任务（执行时间）混合场景下，对交互进程不友好。</p>
+<h3 id="SJF：最短时间优先"><a href="#SJF：最短时间优先" class="headerlink" title="SJF：最短时间优先"></a>SJF：最短时间优先</h3><p>选择运行时间最短的进程调度。<br>优点：平均等待时间和平均周转时间短。<br>缺点：必须要预知任务的运行时间。长任务有饥饿风险。</p>
+<h3 id="Round-Robin：轮询"><a href="#Round-Robin：轮询" class="headerlink" title="Round Robin：轮询"></a>Round Robin：轮询</h3><p>随着操作系统的发展，交互式程序逐渐普及，与用户的交互带来了新的调度指标—响应时间。为每个任务设置时间片，限定每次任务的执行时间，时间片执行完后，就切换到队列中的下一个任务。<br>把CPU执行时间按照一定timeslice</p>
+<p>优点：不需预知任务的运行时间，不会出现长任务饥饿的情况。<br>缺点：在任务运行时间相似的情况下平均周转时间高（每个任务运行时间相似的情况下）；涉及到频繁的任务切换，可能会增大调度器的调度开销。</p>
+<h3 id="Prioriby-based：优先级调度"><a href="#Prioriby-based：优先级调度" class="headerlink" title="Prioriby based：优先级调度"></a>Prioriby based：优先级调度</h3><h3 id="Dynamic-Priority-Based：动态优先级"><a href="#Dynamic-Priority-Based：动态优先级" class="headerlink" title="Dynamic Priority Based：动态优先级"></a>Dynamic Priority Based：动态优先级</h3><h3 id="Lottery-Scheduling：彩票调度"><a href="#Lottery-Scheduling：彩票调度" class="headerlink" title="Lottery Scheduling：彩票调度"></a>Lottery Scheduling：彩票调度</h3><p>一种基于概率的任务调度策略。每个任务被分配一定数量的彩票。每当系统需要选择一个任务来执行时，它会通过随机抽取彩票来决定。<br>任务所持有的彩票数量与其被选中执行的概率成正比。这种方法确保了每个任务都有机会获得CPU时间，但每个任务获得的机会是根据其彩票数量来决定的。<br>优点：公平性好，会为每个任务分配彩票，确保每个任务都有获得CPU时间的机会。任务执行概率与所持有的彩票数量成正比。<br>缺点：彩票抽取随机的，导致任务执行的顺序也是随机的，导致任务的响应时间不可预测。</p>
+<h3 id="MLFQ：多级反馈队列"><a href="#MLFQ：多级反馈队列" class="headerlink" title="MLFQ：多级反馈队列"></a>MLFQ：多级反馈队列</h3><p>以下是wiki翻译内容：<br>多级反馈队列（Multilevel Feedback Queue，简称 MLFQ）是一种用于进程调度的计算机算法，最早由费尔南多·科巴托（Fernando J. Corbató）等人在1962年为兼容分时系统（CTSS）设计。MLFQ的目标是优化任务的周转时间（turnaround time），同时兼顾系统响应时间（response time）。MLFQ的实现基于以下观察：</p>
+<ol>
+<li>短任务应优先执行（例如交互式命令），以改善用户体验。</li>
+<li>未知任务的性质（如运行时长）需通过调度器动态推断，而非依赖用户提供的信息。<br>MLFQ通过将任务分配到多个队列中来实现这一目标，每个队列具有不同的优先级。任务的初始优先级最高，若其未在允许的时间片内完成，则会被降级到较低优先级的队列中。较低优先级的队列通常分配更长的时间片，但被调度的频率更低。通过这种方式，短任务可以快速完成，而长任务（如CPU密集型计算）会在后台运行，避免阻塞交互式任务。<br>算法规则<br>MLFQ的基本规则如下：</li>
+<li>多队列结构：<br>存在多个优先级不同的队列。<br>每个队列中的任务按特定调度策略执行（如高优先级队列使用轮转调度）。</li>
+<li>任务分配：<br>新任务进入最高优先级的队列。</li>
+<li>时间片分配：<br>高优先级队列分配较短的时间片（例如10ms），低优先级队列分配较长的时间片（例如100ms）。</li>
+<li>优先级调整：<br>若任务在时间片内主动释放CPU（如等待I&#x2F;O），则保持其优先级。<br>若任务用完整个时间片（未主动让出CPU），则降低其优先级（移至较低队列）。</li>
+<li>周期性的优先级重置：<br>为避免长任务饥饿（starvation），系统定期将所有任务重新提升到最高优先级队列（称为老化，Aging）。<br>示例<br>假设MLFQ包含三个队列（Q0、Q1、Q2），优先级依次降低，时间片分别为20ms、40ms、80ms：</li>
+<li>任务A（交互式任务，频繁I&#x2F;O）：在Q0中运行，每次使用部分时间片后主动让出CPU，优先级保持为Q0。</li>
+<li>任务B（CPU密集型任务）：</li>
+</ol>
+<ul>
+<li>首次进入Q0，用完20ms后被移至Q1。</li>
+<li>在Q1中用完40ms后被移至Q2。</li>
+<li>最终在Q2中以80ms的时间片运行。</li>
+</ul>
+<ol start="3">
+<li>老化机制：每隔1秒，任务B被重新提升到Q0，防止其因长时间运行而无法获得CPU时间。</li>
+</ol>
+<p>优缺点<br>优点</p>
+<ul>
+<li>兼顾短任务的响应时间和长任务的公平性。</li>
+<li>无需预知任务运行时间，适用于通用操作系统。</li>
+<li>通过动态优先级调整适应不同负载。</li>
+</ul>
+<p>缺点</p>
+<ul>
+<li>参数配置复杂（如队列数量、时间片长度、老化周期）。</li>
+<li>恶意任务可能通过频繁释放CPU（如短时间睡眠）长期占据高优先级队列。</li>
+<li>老化机制可能引入性能波动。</li>
+</ul>
+<p>实际应用<br>早期分时系统：如CTSS、Multics。<br>现代操作系统：<br>UNIX衍生的系统（如Solaris、FreeBSD）的默认调度器包含MLFQ思想。<br>Linux的完全公平调度器（CFS）虽基于红黑树实现，但通过动态调整任务权重间接支持优先级反馈。</p>
+<p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/486275661">https://zhuanlan.zhihu.com/p/486275661</a></p>
+<p>Linux中，没有完全使用上述的某个进程调度算法，但都有借鉴。</p>
+<h2 id="进程状态"><a href="#进程状态" class="headerlink" title="进程状态"></a>进程状态</h2><h3 id="进程状态分类"><a href="#进程状态分类" class="headerlink" title="进程状态分类"></a>进程状态分类</h3><p>进程状态可以大致分为ready, blocked, running状态。<br>running状态：表示进程被调度器调度到，正在执行本进程代码的状态。<br>ready状态：表示进程已经准备好，但还没有被调度器调度到的状态。或者进程在执行过程中被其他进程抢占或者时间片用完，也是从running状态切换到ready状态。<br>blocked状态：表示进程在执行过程中。调用睡眠等函数进入等待事件或信号状态。<br>这几种状态之间的转换流程如下：</p>
+<img src="/blog/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80-1.png" class="" title="图片描述">
+
+<h3 id="Linux进程状态"><a href="#Linux进程状态" class="headerlink" title="Linux进程状态"></a>Linux进程状态</h3><p>在Linux中，进程的状态如下：</p>
+<img src="/blog/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80-2.png" class="" title="图片描述">
+
+<h2 id="调度器和调度策略"><a href="#调度器和调度策略" class="headerlink" title="调度器和调度策略"></a>调度器和调度策略</h2><h3 id="调度器"><a href="#调度器" class="headerlink" title="调度器"></a>调度器</h3><p>Linux提供了5种调度器，分别是<code>stop_sched_class</code>, <code>dl_sched_class</code>, <code>rt_sched_class</code>, <code>fair_sched_class</code>, <code>idle_sched_class</code>。调度器使用<code>struct sched_class</code>进行抽象。<br>5个调度器在vmlinux.lds文件中有定义，调度代码会根据其地址大小判断优先级。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * The order of the sched class addresses are important, as they are</span><br><span class="line"> * used to determine the order of the priority of each sched class in</span><br><span class="line"> * relation to each other.</span><br><span class="line"> */</span><br><span class="line">#define SCHED_DATA                              \</span><br><span class="line">        STRUCT_ALIGN();                         \</span><br><span class="line">        __sched_class_highest = .;              \</span><br><span class="line">        *(__stop_sched_class)                   \</span><br><span class="line">        *(__dl_sched_class)                     \</span><br><span class="line">        *(__rt_sched_class)                     \</span><br><span class="line">        *(__fair_sched_class)                   \</span><br><span class="line">        *(__idle_sched_class)                   \</span><br></pre></td></tr></table></figure>
+<ol>
+<li>stop_sched_class: 优先级最高，可以抢占其他进程，不能被其他进程抢占</li>
+<li>dl_sched_class: 基于进程的截止时间保存在红黑树，选择时间最小的进程进行调度</li>
+<li>rt_sched_class: 实时调度器，优先级[0:99]都维护一个队列</li>
+<li>fair_sched_class: CFS调度器</li>
+<li>idle_sched_class: 每个CPU在启动的时候都有一个idle线程。在没有进程需要调度的时候，就会调度idle线程。</li>
+</ol>
+<p>Linux中进程在不同调度器之间的关系如下：</p>
+<img src="/blog/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80-4.png" class="" title="图片描述">
+
+<h3 id="调度策略"><a href="#调度策略" class="headerlink" title="调度策略"></a>调度策略</h3><p>调度策略是基于调度器提供不同的调度方式的。调度策略与调度器之间的关系如下：</p>
+<img src="/blog/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80-3.png" class="" title="图片描述">
+
+
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/Linux_Everything/article/details/139320786">https://blog.csdn.net/Linux_Everything/article/details/139320786</a></p>
+<p><a target="_blank" rel="noopener" href="https://github.com/jiebaomaster/linux-kernel-doc-translate/blob/master/lwn/MuQSS_%E8%B0%83%E5%BA%A6%E5%99%A8-The_MuQSS_CPU_scheduler.md">https://github.com/jiebaomaster/linux-kernel-doc-translate/blob/master/lwn/MuQSS_%E8%B0%83%E5%BA%A6%E5%99%A8-The_MuQSS_CPU_scheduler.md</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/LXZYZDCZL/p/16184147.html">https://www.cnblogs.com/LXZYZDCZL/p/16184147.html</a></p>
+<p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/486275661">https://zhuanlan.zhihu.com/p/486275661</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.zhihu.com/people/a-a-a-a-6-9-82">https://www.zhihu.com/people/a-a-a-a-6-9-82</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/21052707/answer/3598134129">https://www.zhihu.com/question/21052707/answer/3598134129</a></p>
+<p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/465789157">https://zhuanlan.zhihu.com/p/465789157</a></p>
+<p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/30950194971">https://zhuanlan.zhihu.com/p/30950194971</a></p>
+<p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/683775984">https://zhuanlan.zhihu.com/p/683775984</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io">ray.jk.hong</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/">https://ray-jk-hong.github.io/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E5%9F%BA%E7%A1%80/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://ray-jk-hong.github.io" target="_blank">ray.jk.hong</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/%E8%B0%83%E5%BA%A6/">调度</a></div><div class="post-share"><div class="social-share" data-image="/blog/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/blog/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/CFS/" title="调度基础"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">调度基础</div></div><div class="info-2"><div class="info-item-1">http://arthurchiao.art/blog/linux-cfs-design-and-implementation-zh/ https://docs.kernel.org/translations/zh_CN/scheduler/sched-design-CFS.html </div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/2025/04/18/linux/%E8%BF%9B%E7%A8%8B/%E5%94%A4%E9%86%92%E6%8A%96%E5%8A%A8%E4%BC%98%E5%8C%96/" title="唤醒抖动优化"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-18</div><div class="info-item-2">唤醒抖动优化</div></div><div class="info-2"><div class="info-item-1">当进程被唤醒时候的抖动(jitter)严重影响性能。例如当你发了消息给目的端之后等待消息回复，目的端回了消息并通过中断等方式通知到源端，但源端在唤醒的时候被唤醒的时间比较慢或者唤醒的时间抖动比较严重。出现这种情况，源端在一次同步发送中表现出来的性能就会变差，抖动也比较严重。 https://rigtorp.se/low-latency-guide/ osnoise 待完成… </div></div></div></a><a class="pagination-related" href="/blog/2025/05/20/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/CFS/" title="调度基础"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-05-20</div><div class="info-item-2">调度基础</div></div><div class="info-2"><div class="info-item-1">http://arthurchiao.art/blog/linux-cfs-design-and-implementation-zh/ https://docs.kernel.org/translations/zh_CN/scheduler/sched-design-CFS.html </div></div></div></a><a class="pagination-related" href="/blog/2025/04/26/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/EAS/" title="EAS调度"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-26</div><div class="info-item-2">EAS调度</div></div><div class="info-2"><div class="info-item-1">https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/energy-aware-scheduling-in-linux </div></div></div></a><a class="pagination-related" href="/blog/2025/04/26/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/EEVDF/" title="EEVDF调度"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-04-26</div><div class="info-item-2">EEVDF调度</div></div><div class="info-2"><div class="info-item-1">https://zhuanlan.zhihu.com/p/683775984 https://zhuanlan.zhihu.com/p/486275661 </div></div></div></a><a class="pagination-related" href="/blog/2025/05/18/linux/%E8%BF%9B%E7%A8%8B/%E8%B0%83%E5%BA%A6/%E8%B0%83%E5%BA%A6%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/" title="调度软件架构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-05-18</div><div class="info-item-2">调度软件架构</div></div><div class="info-2"><div class="info-item-1">rq（runqueue）global, per-core, per-entity, per-cluster Load Balance显式，隐士，push, pull Loadtask number, nice weight, pelt, walt </div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">ray.jk.hong</div><div class="author-info-description"></div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">58</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">14</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/ray-jk-hong"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E6%97%B6%E9%97%B4"><span class="toc-number">1.</span> <span class="toc-text">进程时间</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E5%88%86%E7%B1%BB"><span class="toc-number">2.</span> <span class="toc-text">进程分类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-number">3.</span> <span class="toc-text">进程优先级</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B0%83%E5%BA%A6%E7%AE%97%E6%B3%95"><span class="toc-number">4.</span> <span class="toc-text">调度算法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#FCFS%EF%BC%9A%E5%85%88%E5%88%B0%E5%85%88%E6%9C%8D%E5%8A%A1"><span class="toc-number">4.1.</span> <span class="toc-text">FCFS：先到先服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SJF%EF%BC%9A%E6%9C%80%E7%9F%AD%E6%97%B6%E9%97%B4%E4%BC%98%E5%85%88"><span class="toc-number">4.2.</span> <span class="toc-text">SJF：最短时间优先</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Round-Robin%EF%BC%9A%E8%BD%AE%E8%AF%A2"><span class="toc-number">4.3.</span> <span class="toc-text">Round Robin：轮询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Prioriby-based%EF%BC%9A%E4%BC%98%E5%85%88%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="toc-number">4.4.</span> <span class="toc-text">Prioriby based：优先级调度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Dynamic-Priority-Based%EF%BC%9A%E5%8A%A8%E6%80%81%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-number">4.5.</span> <span class="toc-text">Dynamic Priority Based：动态优先级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Lottery-Scheduling%EF%BC%9A%E5%BD%A9%E7%A5%A8%E8%B0%83%E5%BA%A6"><span class="toc-number">4.6.</span> <span class="toc-text">Lottery Scheduling：彩票调度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MLFQ%EF%BC%9A%E5%A4%9A%E7%BA%A7%E5%8F%8D%E9%A6%88%E9%98%9F%E5%88%97"><span class="toc-number">4.7.</span> <span class="toc-text">MLFQ：多级反馈队列</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81"><span class="toc-number">5.</span> <span class="toc-text">进程状态</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81%E5%88%86%E7%B1%BB"><span class="toc-number">5.1.</span> <span class="toc-text">进程状态分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Linux%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81"><span class="toc-number">5.2.</span> <span class="toc-text">Linux进程状态</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B0%83%E5%BA%A6%E5%99%A8%E5%92%8C%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5"><span class="toc-number">6.</span> <span class="toc-text">调度器和调度策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="toc-number">6.1.</span> <span class="toc-text">调度器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5"><span class="toc-number">6.2.</span> <span class="toc-text">调度策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83"><span class="toc-number">7.</span> <span class="toc-text">参考</span></a></li></ol></div></div></div></div></main><footer id="footer"><div id="footer-wrap"></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js"></script><script src="/blog/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
