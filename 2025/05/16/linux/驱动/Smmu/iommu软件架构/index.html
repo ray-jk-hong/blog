@@ -7,7 +7,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
 <meta property="article:published_time" content="2025-05-16T11:32:55.168Z">
-<meta property="article:modified_time" content="2025-05-26T10:43:05.743Z">
+<meta property="article:modified_time" content="2025-06-04T12:30:12.956Z">
 <meta property="article:author" content="ray.jk.hong">
 <meta property="article:tag" content="驱动">
 <meta name="twitter:card" content="summary">
@@ -18,7 +18,7 @@
   "url": "https://ray-jk-hong.github.io/2025/05/16/linux/%E9%A9%B1%E5%8A%A8/Smmu/iommu%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/",
   "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
   "datePublished": "2025-05-16T11:32:55.168Z",
-  "dateModified": "2025-05-26T10:43:05.743Z",
+  "dateModified": "2025-06-04T12:30:12.956Z",
   "author": [
     {
       "@type": "Person",
@@ -307,6 +307,7 @@
 <h4 id="Stage-1-Stage-2方式"><a href="#Stage-1-Stage-2方式" class="headerlink" title="Stage-1 + Stage-2方式"></a>Stage-1 + Stage-2方式</h4><img src="/blog/2025/05/16/linux/%E9%A9%B1%E5%8A%A8/Smmu/iommu%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/Stage1andStage2.png" class="" title="图片描述">
 <p>上图是MMU的Stage-1 + Stage-2翻译的示意图，其实就把VA写成IOVA就可以了。<br>在STE既使能了Stage-1，也使能了Stage-2的时候，是按照如下流程翻译地址的：<br>1)先做Stage-1地址翻译，通过找到CD，并翻译出来地址。此时的地址就是IPA地址<br>2)再做Stage-2地址翻译，通过IPA地址在<code>S2TTB</code>指向的页表做地址翻译，找到最终的PA。</p>
 <h3 id="CD页表"><a href="#CD页表" class="headerlink" title="CD页表"></a>CD页表</h3><p>CD是只在<code>Stage-1</code>的翻译过程中使用的，结构体如下：</p>
+<img src="/blog/2025/05/16/linux/%E9%A9%B1%E5%8A%A8/Smmu/iommu%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/ContextDescriptor.png" class="" title="图片描述">
 
 <p>CD结构体中有很多定义都是MMU地址翻译中见到过的，例如TG, TZ, IPS等。TTB0对应的就是MMU的TTBR0，TTB1就是对应的MMU的TTBR1。<br><code>arm_smmu_write_ctx_desc</code>函数就是根据ssid在写CD的函数。</p>
 <h3 id="地址大小"><a href="#地址大小" class="headerlink" title="地址大小"></a>地址大小</h3><p>SMMU有三个地址大小需要考虑。<br>1.系统输入的地址大小，可以是iova地址，可以是sva地址。<br>2.IAS:Intermediate Address Size<br>  IAS影响最大的IPA地址（Stage-1翻译输出给Stage-2）。<br>3.OAS:Output Address Size<br>  OAS影响最大的PA。所以定OAS的值必须要查看物理地址最大值。</p>
