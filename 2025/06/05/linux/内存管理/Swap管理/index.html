@@ -7,7 +7,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
 <meta property="article:published_time" content="2025-06-05T10:25:52.000Z">
-<meta property="article:modified_time" content="2025-06-05T10:25:52.001Z">
+<meta property="article:modified_time" content="2025-06-05T16:00:11.382Z">
 <meta property="article:author" content="ray.jk.hong">
 <meta property="article:tag" content="内存管理">
 <meta name="twitter:card" content="summary">
@@ -18,7 +18,7 @@
   "url": "https://ray-jk-hong.github.io/2025/06/05/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/Swap%E7%AE%A1%E7%90%86/",
   "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
   "datePublished": "2025-06-05T10:25:52.000Z",
-  "dateModified": "2025-06-05T10:25:52.001Z",
+  "dateModified": "2025-06-05T16:00:11.382Z",
   "author": [
     {
       "@type": "Person",
@@ -223,18 +223,18 @@
 <p>Linux是这么做的、在<code>page</code>被交换出去的时候，会复用<code>pte</code>（因为交换出去之后，进程的pte已经没有什么作用了），将<code>swp_entry_t</code>写入到pte中。<code>swp_entry_t</code>的定义如下：</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> val;</span><br><span class="line">&#125; <span class="type">swp_entry_t</span>;</span><br></pre></td></tr></table></figure>
 
-<p><code>swp_entry_t</code>的各bit位表示如下：</p>
+<p><code>swp_entry_t</code>的各bit位表示如下：（<code>swp_entry_t</code>在<code>Swap Area</code>或者<code>Swap Cache</code>都会用到，索性一起讲了）</p>
 <img src="/blog/2025/06/05/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/Swap%E7%AE%A1%E7%90%86/Swap%E7%AE%A1%E7%90%86-1.png" class="" title="图片描述">
 
-<p>??? ext4文件系统的read page需要page-&gt;index、但pte中保存的好像只赋值给了page-&gt;private。那swap in的时候是怎么从ext4找到对应的page数据的？</p>
 <ol>
 <li>present[0:1]：必须是0。又<a href="https://ray-jk-hong.github.io/blog/2025/04/16/arch/Arm-mmu/">arm-smmu篇</a>可以知道、这两位是0表示页表是非法的、才能触发缺页并执行后续操作</li>
-<li>type[2:7]：用于搜索<code>struct swap_info_struct</code>或者<code>swapper_spaces</code></li>
-<li>offset[8:57]：用作搜索<code>swapper_spaces</code>中的基数树的偏移来找到对应的页、或者<code>struct swap_info_struct</code>中的<code>swap_map</code>。<code>swap_map</code>用来记录当天使用该页的数量（Swap Cache算一个用户、将该页记录到PTE中的所有进程都算一个用户。如果<code>swap_map</code>的值是SWAP_MAP_MAX、这个槽位将被永久分配出去、但如果值是<code>SWAP MAP BAD</code>、这个槽位用于都不会分配出去）</li>
+<li>type[2:7]：<br>(1) 在<code>Swap Cache</code>中查找时、使用type[2:7]找到对应的<code>swapper_spaces</code><br>(2) 在<code>Swap Area</code>中查找时、使用type[2:7]找到对应的<code>struct swap_info_struct</code></li>
+<li>offset[8:57]：<br>(1) 在<code>Swap Cache</code>中查找时、使用offset[8:57]为key在上面type对应的<code>swapper_spaces</code>的<code>radix tree</code>中找到对应的<code>page</code><br>(2) 在<code>Swap Area</code>中查找时、offset[8:57]有两个作用：</li>
 </ol>
-<p>如下图所示、是根据<code>pte</code>-&gt;<code>swp_entry_t</code>寻找对应的<code>swap_map</code>的过程：</p>
-<img src="/blog/2025/06/05/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/Swap%E7%AE%A1%E7%90%86/Swap-map.png" class="" title="图片描述">
-<p>当页被交换出去之后，通过<code>pte</code>-&gt;<code>swp_entry_t</code>可以找到对应的<code>struct swap_info_struct</code>以及对应的<code>swap_map</code>。<code>swap_map</code>中保存该页被引用的次数。</p>
+<ul>
+<li>定位的<code>swap_map</code>查看有几个进程在使用该<code>page</code>、<code>swap_map</code>用来记录当前使用该页的用户数量（Swap Cache算一个用户、将该页记录到PTE中的所有进程都算一个用户。如果<code>swap_map</code>的值是SWAP_MAP_MAX、这个槽位将被永久分配出去、但如果值是<code>SWAP MAP BAD</code>、这个槽位用于都不会分配出去）</li>
+<li>要<code>swapin</code>某个page时、使用其找到对应的<code>swap_extent</code>并组装<code>bio</code>或者直接发<code>sector</code>从文件或者分区中读取数据（查看<code>swap_readpage</code>函数）。</li>
+</ul>
 <h2 id="交换缓存（Swap-Cache）"><a href="#交换缓存（Swap-Cache）" class="headerlink" title="交换缓存（Swap Cache）"></a>交换缓存（Swap Cache）</h2><h3 id="Swap-Cache介绍"><a href="#Swap-Cache介绍" class="headerlink" title="Swap Cache介绍"></a>Swap Cache介绍</h3><p>对于被多个进程共享的页面，当进程A的访问触发了这个页面的swap in后，其他进程是不知道的，之后当进程B也试图访问这个页面时，因为它的PTE里存放的还是<code>swap area</code>中的<code>slot</code>号，如果它也去从<code>swap area</code>（交换区，位于磁盘）中<code>swap in</code>这个页面，将造成无谓的时间消耗（访问磁盘是很慢的）和内存占用（同一份数据在内存中有多个拷贝）。<br>解决这个问题的办法就是引入<code>swap cache</code>。内核在将一个页面换入内存后，会增加一个<code>swap cache</code>对这个页面的指向。当进程试图换入一个页面时，会首先从<code>swap cache</code>中查找，如果找到了，则填写对应的<code>PTE</code>，将对外部<code>swap slot</code>的指向转化为对这个内存页面的指向。</p>
 <p><code>Swap Cache</code>是一个特殊版本的<code>Page Cache</code>、这两个的区别是：<br>(1)<code>Swap Cache</code>使用<code>swapper_space</code>作为其<code>address_space</code>、保存到<code>page-&gt;mapping</code><br>(2)<code>Swap Cache</code>使用<code>add to swap cache()</code>作为接口、而不是<code>add to page cache()</code></p>
 <h3 id="Swap-Cache初始化"><a href="#Swap-Cache初始化" class="headerlink" title="Swap Cache初始化"></a>Swap Cache初始化</h3><h2 id="Swap-In"><a href="#Swap-In" class="headerlink" title="Swap In"></a>Swap In</h2><p><code>Swap In</code>流程、就是在缺页的时候、判断该页是放在了<code>Swap Area</code>或者<code>Swap Cache</code>中并读出相应page的过程。</p>
@@ -243,7 +243,24 @@
 <p><code>do_swap_page()</code>函数</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">do_swap_page()</span><br><span class="line">  -&gt;page = lookup_swap_cache(entry, vma, vmf-&gt;address); <span class="comment">// 首先在Swap Cache中寻找、找到就直接返回</span></span><br><span class="line">    <span class="keyword">if</span> (!page) &#123;</span><br><span class="line">      page = swapin_readahead(entry, xxx); <span class="comment">// 没有在Swap Cache中、就通过Swap Area寻找到数据内容并拷贝到新申请的page中</span></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
 
-<h3 id="Swap-Out"><a href="#Swap-Out" class="headerlink" title="Swap Out"></a>Swap Out</h3><h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/feelabclihu/article/details/110252225">https://blog.csdn.net/feelabclihu/article/details/110252225</a></p>
+<p><code>swapin_readhead()</code>函数中要吗走<code>swap_vma_readahead()</code>、要吗就走<code>swap_cluster_readahead</code>。区别是预读是是根据虚拟地址进行预读还是根据page物理位置进行预读。</p>
+<p>疑问：ext4文件系统的read page需要page-&gt;index、但pte中保存的好像只赋值给了page-&gt;private。那swap in的时候是怎么从ext4找到对应的page数据的？后续补充。</p>
+<h3 id="Swap-Out"><a href="#Swap-Out" class="headerlink" title="Swap Out"></a>Swap Out</h3><p>在回收算法选定某些page之后、会经历两轮才能完成回收、流程如下：</p>
+<img src="/blog/2025/06/05/linux/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/Swap%E7%AE%A1%E7%90%86/Swap%E7%AE%A1%E7%90%86-2.png" class="" title="图片描述">
+
+<p>第一轮：</p>
+<ol>
+<li><code>add_to_swap</code>：<br>(1) <code>get_swap_page</code>分配<code>swp_entry_t</code><br>(2) <code>add_to_swap_cache</code>添加到<code>Swap Cache</code>中并把<code>swp_entry_t</code>保存到<code>page-&gt;private</code><br>(3) <code>set_page_dirty</code></li>
+<li><code>try_to_unmap</code>：反向映射找到所有映射该<code>page</code>的进程页表、修改<code>pte</code>为<code>page-&gt;private</code></li>
+<li><code>pageout</code> + <code>swap_writepage</code>：准备将内容写入块设备需要的结构体、发送写入请求</li>
+<li><code>end_swap_bio_write</code>：<br>(1) <code>ClearPageReclaim(page)</code>清除<code>PG_reclaim</code>标记<br>(2) <code>test_clear_page_writeback</code>清除<code>PG_writeback</code>标记<br>(3) <code>wake_up_page(page, PG_writeback)</code>唤醒正在等待该<code>page</code>的<code>PG_writeback</code>标记位的进程</li>
+</ol>
+<p>第二轮：</p>
+<ol>
+<li><code>__remove_mapping</code>：将<code>page</code>从<code>Swap Cache</code>中移除</li>
+<li><code>free_unref_page_list</code>：将<code>free_pages</code>链表中的<code>page</code>释放</li>
+</ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/feelabclihu/article/details/110252225">https://blog.csdn.net/feelabclihu/article/details/110252225</a></p>
 <p>&#x2F;&#x2F; swapin, swapout流程<br><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/607295583">https://zhuanlan.zhihu.com/p/607295583</a></p>
 <p><a target="_blank" rel="noopener" href="https://www.zhihu.com/people/wu-hua-rou-96-30/posts">https://www.zhihu.com/people/wu-hua-rou-96-30/posts</a></p>
 <p><a target="_blank" rel="noopener" href="https://juejin.cn/post/7315461486616756275">https://juejin.cn/post/7315461486616756275</a></p>
