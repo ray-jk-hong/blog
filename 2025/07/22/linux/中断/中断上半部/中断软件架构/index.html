@@ -1,0 +1,244 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>中断软件架构 | ray.jk.hong</title><meta name="author" content="ray.jk.hong"><meta name="copyright" content="ray.jk.hong"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="结构体介绍Linux中的中断软件架构涉及以下几个结构体。  irq_chip:  irq_domain: irq_desc: irq_data: irq_action:  下面就以GIC在被触发中断之后，怎么一步一步找到中断处理函数为例，说明一下这几个结构体之间的关系和每个结构体的作用。    CPU触发中断报到GIC驱动之后，GIC会通过读iar寄存器拿到GIC内部的hwirq(硬件中断号)。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="中断软件架构">
+<meta property="og:url" content="https://ray-jk-hong.github.io/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/index.html">
+<meta property="og:site_name" content="ray.jk.hong">
+<meta property="og:description" content="结构体介绍Linux中的中断软件架构涉及以下几个结构体。  irq_chip:  irq_domain: irq_desc: irq_data: irq_action:  下面就以GIC在被触发中断之后，怎么一步一步找到中断处理函数为例，说明一下这几个结构体之间的关系和每个结构体的作用。    CPU触发中断报到GIC驱动之后，GIC会通过读iar寄存器拿到GIC内部的hwirq(硬件中断号)。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-07-22T10:26:20.908Z">
+<meta property="article:modified_time" content="2025-07-22T10:26:20.908Z">
+<meta property="article:author" content="ray.jk.hong">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "中断软件架构",
+  "url": "https://ray-jk-hong.github.io/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/",
+  "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-07-22T10:26:20.908Z",
+  "dateModified": "2025-07-22T10:26:20.908Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "ray.jk.hong",
+      "url": "https://ray-jk-hong.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/img/favicon.png"><link rel="canonical" href="https://ray-jk-hong.github.io/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/blog/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '中断软件架构',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><script src="/js/bandev.js"></script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"></a><a class="nav-page-title" href="/blog/"><span class="site-name">中断软件架构</span></a></span><div id="menus"></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">中断软件架构</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-categories"><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/linux/">linux</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><h2 id="结构体介绍"><a href="#结构体介绍" class="headerlink" title="结构体介绍"></a>结构体介绍</h2><p>Linux中的中断软件架构涉及以下几个结构体。</p>
+<ol>
+<li>irq_chip: </li>
+<li>irq_domain:</li>
+<li>irq_desc:</li>
+<li>irq_data:</li>
+<li>irq_action:</li>
+</ol>
+<p>下面就以GIC在被触发中断之后，怎么一步一步找到中断处理函数为例，说明一下这几个结构体之间的关系和每个结构体的作用。</p>
+<img src="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84-1.png" class="" title="图片描述">
+
+<ol>
+<li>CPU触发中断报到GIC驱动之后，GIC会通过读iar寄存器拿到GIC内部的hwirq(硬件中断号)。</li>
+<li>gic_chip_data通过自己的irq_domain结构体，将hwirq转成virq（全局编号的软件中断号）。</li>
+<li>virq通过不同查找方式（根据配置的feature），找到irq_desc结构体。</li>
+<li>irq_desc再通过action指针找到irqaction结构体。</li>
+<li>irqaction通过handler函数指针，调用注册的中断函数。</li>
+</ol>
+<p>当驱动配置中断属性（例如中断亲和性）的时候，也是通过virq-&gt;irq_desc-&gt;irq_data-&gt;irq_chip这种方式找到irq_chip结构体，<br>并通过irq_chip的回调（GIC驱动就是会根据gic_chip全局变量注册的回调）来配置GIC中断的亲和性。</p>
+<h2 id="GIC初始化"><a href="#GIC初始化" class="headerlink" title="GIC初始化"></a>GIC初始化</h2><p>GIC是整个系统中最基础的主中断控制器（interrupt-controller）。所以在其他依赖GIC的次级的中断控制器（例如GPIO）启动之前，需要将GIC中断控制初始化好。下面是GIC被初始化的流程。</p>
+<p>（参考<a target="_blank" rel="noopener" href="https://www.cnblogs.com/LoyenWang/p/12996812.html%EF%BC%89">https://www.cnblogs.com/LoyenWang/p/12996812.html）</a></p>
+<img src="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84-2.png" class="" title="图片描述">
+<ul>
+<li>首先需要了解一下链接脚本vmlinux.lds，脚本中定义了一个__irqchip_of_table段，该段用于存放中断控制器信息，用于最终来匹配设备；</li>
+<li>在GIC驱动程序中，使用IRQCHIP_DECLARE宏来声明结构信息，包括compatible字段和回调函数，该宏会将这个结构放置到__irqchip_of_table字段中；</li>
+<li>在内核启动初始化中断的函数中，of_irq_init函数会去查找设备节点信息，该函数的传入参数就是__irqchip_of_table段，由于IRQCHIP_DECLARE已经将信息填充好了，of_irq_init函数会根据arm,gic-400去查找对应的设备节点，并获取设备的信息。中断控制器也存在级联的情况，of_irq_init函数中也处理了这种情况；</li>
+<li>or_irq_init函数中，最终会回调IRQCHIP_DECLARE声明的回调函数，也就是gic_of_init，而这个函数就是GIC驱动的初始化入口函数了；</li>
+<li>GIC的工作，本质上是由中断信号来驱动，因此驱动本身的工作就是完成各类信息的初始化，注册好相应的回调函数，以便能在信号到来之时去执行；</li>
+<li>set_smp_process_call设置__smp_cross_call函数指向gic_raise_softirq，本质上就是通过软件来触发GIC的SGI中断，用于核间交互；</li>
+<li>cpuhp_setup_state_nocalls函数，设置好CPU进行热插拔时GIC的回调函数，以便在CPU热插拔时做相应处理；</li>
+<li>set_handle_irq函数的设置很关键，它将全局函数指针handle_arch_irq指向了gic_handle_irq，而处理器在进入中断异常时，会跳转到handle_arch_irq执行，所以，可以认为它就是中断处理的入口函数了；</li>
+<li>驱动中完成了各类函数的注册，此外还完成了irq_chip, irq_domain。</li>
+</ul>
+<h2 id="中断控制器的级联"><a href="#中断控制器的级联" class="headerlink" title="中断控制器的级联"></a>中断控制器的级联</h2><p>参考：<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/34371352/what-are-linux-irq-domains-why-are-they-needed">https://stackoverflow.com/questions/34371352/what-are-linux-irq-domains-why-are-they-needed</a></p>
+<h3 id="中断控制器的级联介绍"><a href="#中断控制器的级联介绍" class="headerlink" title="中断控制器的级联介绍"></a>中断控制器的级联介绍</h3><p>当前的CPU除了GIC是总的中断控制器，还会有很多次级的中断控制器，比如GPIO。而且GPIO还会被其他的设备依赖。<br>下面以一个例子说明，中断控制器在级联的时候，irq_domain是怎么一级一级被创建的，且中断触发的时候是怎么一级一级传递中断号并进行翻译的。</p>
+<img src="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/Linux%E4%B8%AD%E6%96%AD-ARM-max7325-1.png" class="" title="图片描述">
+<p>max7325有8个端口，可以连外部的设备。左边的INT是一个端口，可以连到CPU上。例如外部设备改变了p0端口的电平，max7325将会改变INT电平，将中断传递给CPU。<br>CPU会触发max7325驱动的中断回调，在此中断回调中max7325通过i2c读到p0-p7这8个端口中，到底是哪个端口发生了变化。</p>
+<p>完整的连接示意图如下：</p>
+<img src="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/Linux%E4%B8%AD%E6%96%AD-ARM-max7325-2.png" class="" title="图片描述">
+<p>如上图所示，”Some device”连到了p4端口。p4端口电平变化，max7325的INT端口就会随之变化。INT连到了GPIO4_29端口，所以GPIO也会感知到电平变化，并将gpio4_irq拉高或者拉低通知GIC，有外设中断来了。这里描述的是硬件流程，但软件流程显然是相反的。</p>
+<p>在CPU触发到中断之后，GIC驱动会识别的某个中断（图上是GPIO4_IRQ这个hwirq）触发的，就会回调到GPIO4模块的中断回调函数了。<br>GPIO4模块也会在中断回调函数中通过查寄存器等方式，发现是GPIO4_29的电平发生变化导致的，就会回调对应的中断回调函数，也就是max7325的回调函数。<br>max7325中断回调调用之后，就会通过i2c查到P4电平发生了变化。</p>
+<p>下面看一下DTS是要怎么设置的。</p>
+<ol>
+<li>GPIO的DTS设置：</li>
+</ol>
+<ul>
+<li>GPIO是级联到GIC的，所以要指定interrupt-parrnet是gic</li>
+<li>interrupt-controller表示自己是一个中断控制器。其实就是表示其他模块可以给我注册中断。当我的中断被触发之后，我可以将中断传递下去。如果interrupt-controller没有设置，其他组件就不能使用interrupt-parent引用该组件。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">gic: interrupt-controller@fee00000 &#123;</span><br><span class="line">    compatible = &quot;arm,gic-v3&quot;;</span><br><span class="line">    reg = &lt;0x0 0xfee00000 0x0 0x10000&gt;;</span><br><span class="line">    #interrupt-cells = &lt;3&gt;;</span><br><span class="line">    interrupt-controller;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">gpio4: gpio-controller@ff000000 &#123;</span><br><span class="line">    compatible = &quot;vendor,gpio-controller&quot;;</span><br><span class="line">    reg = &lt;0x0 0xff000000 0x0 0x1000&gt;;</span><br><span class="line">    #gpio-cells = &lt;2&gt;;</span><br><span class="line">    interrupt-controller; // 声明自身为中断控制器</span><br><span class="line">    #interrupt-cells = &lt;2&gt;;</span><br><span class="line">    interrupts = &lt;GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH&gt;; // GPIO控制器的中断信号连接到GIC的SPI 16</span><br><span class="line">    interrupt-parent = &lt;&amp;gic&gt;; // 父中断控制器是GIC</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>max7325的DTS:</li>
+</ol>
+<ul>
+<li>因为是连到GPIO_4模块，所以interrupt-parent要配置成GPIO4</li>
+<li>interrupts &#x3D; &lt;29 IRQ_TYPE_EDGE_FALLING&gt;表示使用GPIO4的29中断。这显然是GPIO4自己的编的中断号，这种要自己编中断号的当然就需要自己的irq_domain了。在<code>max7325_probe</code>-&gt;<code>devm_gpiochip_add_data</code>中就会创建irq_domain了。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">expander: max7325@6d &#123;</span><br><span class="line">    compatible = &quot;maxim,max7325&quot;;</span><br><span class="line">    reg = &lt;0x6d&gt;;</span><br><span class="line"></span><br><span class="line">    gpio-controller;</span><br><span class="line">    #gpio-cells = &lt;2&gt;;</span><br><span class="line"></span><br><span class="line">    interrupt-controller;</span><br><span class="line">    #interrupt-cells = &lt;2&gt;;</span><br><span class="line"></span><br><span class="line">    interrupt-parent = &lt;&amp;gpio4&gt;;</span><br><span class="line">    interrupts = &lt;29 IRQ_TYPE_EDGE_FALLING&gt;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>上述some device设备的DTS。</li>
+</ol>
+<ul>
+<li>连到了max7325设备，所以interrupt-parent指定成了max7325</li>
+<li>中断号是4，当然这肯定也是max7325自己需要解析的中断号。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">some_device: some_device@1c &#123;</span><br><span class="line">    reg = &lt;0x1c&gt;;</span><br><span class="line">    interrupt-parent = &lt;&amp;expander&gt;;</span><br><span class="line">    interrupts = &lt;4 IRQ_TYPE_EDGE_RISING&gt;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h3 id="中断控制器的级联中断回调传递"><a href="#中断控制器的级联中断回调传递" class="headerlink" title="中断控制器的级联中断回调传递"></a>中断控制器的级联中断回调传递</h3><p>在配置完成之后，就可以在some device驱动内部使用中断注册了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">devm_request_threaded_irq(core-&gt;dev, core-&gt;gpio_irq, <span class="literal">NULL</span>,</span><br><span class="line">        some_device_isr, IRQF_TRIGGER_RISING | IRQF_ONESHOT,</span><br><span class="line">        dev_name(core-&gt;dev), core);</span><br></pre></td></tr></table></figure>
+<p>到了这里，我们其实可以看到GIC有自己的irq_domain, GPIO也要有自己的irq_domain， max7325也是需要自己的irq_domain的。</p>
+<ul>
+<li>GIC的irq_domain的创建过程已经在上面说过了。</li>
+<li>GPIO(参考gpio-omap.c)和max7325都是通过gpiolib生成的irq_domain。（<a target="_blank" rel="noopener" href="https://www.processon.com/diagraming/67e2583582ae54370d0474e0%EF%BC%89">https://www.processon.com/diagraming/67e2583582ae54370d0474e0）</a></li>
+</ul>
+<p>在中断触发之后，调用流程如下：</p>
+<ol>
+<li>GIC感知到中断触发，<code> gic_handle_irq()</code>函数会被调用（中断触发到这一步，参考中断调用流程那篇）。 随后就是<code>handle_domain_irq()</code>-&gt;<code>generic_handle_irq()</code>。</li>
+<li>GPIO驱动还是调用<code>generic_handle_irq()</code>，后面会找到对应管脚的回调函数再回调。</li>
+<li>max7325中断处理程序调用handle_nested_irq()。然后所有连接到max7325的设备的中断处理程序将被调用。</li>
+</ol>
+<h3 id="generic-handle-irq和handle-nested-irq的区别"><a href="#generic-handle-irq和handle-nested-irq的区别" class="headerlink" title="generic_handle_irq和handle_nested_irq的区别"></a>generic_handle_irq和handle_nested_irq的区别</h3><p>generic_handle_irq是直接在中断上下文执行。handle_nested_irq是将中断回调提交到线程池中执行。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io">ray.jk.hong</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/">https://ray-jk-hong.github.io/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://ray-jk-hong.github.io" target="_blank">ray.jk.hong</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/linux/">linux</a></div><div class="post-share"><div class="social-share" data-image="/blog/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%B0%83%E7%94%A8%E6%B5%81%E7%A8%8B/" title="中断调用流程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">中断调用流程</div></div><div class="info-2"><div class="info-item-1">基于AArch64和GIC讲从触发中断开始，怎么一路执行到GIC中断回调函数gic_handle_irq的。 概念异常级别AArch64架构定义了四个异常级别(EL0到EL3)：EL0：用户空间（user space）EL1：内核（kernel）EL2：虚拟机监控程序（hypervisor）EL3：安全监控器（secure monitor）在典型的Linux系统中，内核运行在EL1，用户程序运行在EL0。EL2用于虚拟化，EL3用于安全世界（secure world）和非安全世界（non-secure world）之间的切换。 中断类型AArch64有两种中断类型：IRQ（普通中断请求）FIQ（快速中断请求） 中断路由这里说的中断路由，不是说配置GICD将某个中断路由到某个CPU核上，说的是中断路由到哪异常级别。中断路由到不同的异常级别，主要涉及下面三个寄存器：  SCR_EL3（安全配置寄存器，Secure Configuration Register） HCR_EL2（Hypervisor配置寄存器，Hypervisor Configuration...</div></div></div></a><a class="pagination-related" href="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8B%E5%8D%8A%E9%83%A8/workqueue/" title="workqueue架构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">workqueue架构</div></div><div class="info-2"><div class="info-item-1">主要讲一下linux中断下半部常用到的workqueue的软件架构。workqueue主要由worker pool和worker, workqueue pool, work和workqueue 5个结构体组成。这5个结构体之间的关系可以这么形容：  worker pool可以认为是一个包工头，worker就是这个包工头下面的工人，可以被雇佣，也可以被裁掉。 work是要派给包工头的材料，work pool你可以认为是一个仓库，先临时保存这些材料，等包工头干完了手头的事情，就可以从这个仓库里边取。 workqueue就是一个派活的人。  在系统初始化阶段有一堆叫cpu_worker_pools的包工头，两个包工头分别占据着一个cpu，一个包工头负责优先级高的活，一个包工头负责优先级低的活。两个包工头的nice值分别是-20，0（优先级就是100和120）。worker pool的初始化在start_kernel()-&gt;workqueue_init_early()中，初始化之后cpu与worker...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/2025/07/22/linux/%E5%86%85%E6%A0%B8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%AE%97%E6%B3%95/llist_xxx%E6%8E%A5%E5%8F%A3/" title="llist_xxx免锁链表"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-22</div><div class="info-item-2">llist_xxx免锁链表</div></div><div class="info-2"><div class="info-item-1">llist_xxx在部分使用场景无需锁，可以提高性能。 (1) 不需要加锁的情况：如果&#x3D;&#x3D;有多个生产者和多个消费者&#x3D;&#x3D;，则可以在生产者中使用 llist_add，在消费者中同时&#x3D;&#x3D;使用 llist_del_all，无需锁定&#x3D;&#x3D;。此外，如果&#x3D;&#x3D;单个消费者&#x3D;&#x3D;多个生产者，单个消费者可以使用 &#x3D;&#x3D;llist_del_first&#x3D;&#x3D;，而多个生产者同时使用 llist_add，无需任何锁定。 (2) 需要加锁的情况：如果我们有多个消费者，其中一个消费者使用 llist_del_first, 其他消费者使用 llist_del_first 或 llist_del_all，则需要锁。这是因为 llist_del_first 依赖于 list-&gt;first-&gt;next 不会改变，但是没有锁保护，如果在删除操作中间发生抢占并且被抢占，则无法确定 list-&gt;first 与之前导致 llist_del_first 中的...</div></div></div></a><a class="pagination-related" href="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E7%B1%BB%E5%9E%8B%E4%BB%8B%E7%BB%8D/" title="中断类型介绍"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-22</div><div class="info-item-2">中断类型介绍</div></div><div class="info-2"><div class="info-item-1">介绍ARM平台，GIC管理的中断有SGI, PPI, SPI, LPI这4种。4种中断类型在GIC的chip type的硬中断号排布如下：    中断类型 硬件中断号 描述    SGI 0-15 软中断，由软件触发引起的中断，通过向寄存器 GICD_SGIR 写入数据来触发，系统会使用 SGI 中断来完成多核之间的通信   PPI 16-31 私有外设中断，中断来自于外设，被特定的核处理。GIC 是支持多核的，每个核有自己独有的中断，例如timer相关的中断就是这个类型的中断   SPI 32-1019 共享外设中断，该中断来自于外设，所有 Core 共享的中断。比如按键中断、串口中断等等，这些中断所有的 Core 都可以处理，不限定特定 Core   reserved …    LPI 8192-MAX    SGI中断(Software Generated Interrupt)软件触发的中断。软件可以通过写 GICD_SGIR寄存器来触发一个中断事件，一般用于核间通信，内核中的 IPI：inter-processor interrupts 就是基于...</div></div></div></a><a class="pagination-related" href="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8A%E5%8D%8A%E9%83%A8/%E4%B8%AD%E6%96%AD%E8%B0%83%E7%94%A8%E6%B5%81%E7%A8%8B/" title="中断调用流程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-22</div><div class="info-item-2">中断调用流程</div></div><div class="info-2"><div class="info-item-1">基于AArch64和GIC讲从触发中断开始，怎么一路执行到GIC中断回调函数gic_handle_irq的。 概念异常级别AArch64架构定义了四个异常级别(EL0到EL3)：EL0：用户空间（user space）EL1：内核（kernel）EL2：虚拟机监控程序（hypervisor）EL3：安全监控器（secure monitor）在典型的Linux系统中，内核运行在EL1，用户程序运行在EL0。EL2用于虚拟化，EL3用于安全世界（secure world）和非安全世界（non-secure world）之间的切换。 中断类型AArch64有两种中断类型：IRQ（普通中断请求）FIQ（快速中断请求） 中断路由这里说的中断路由，不是说配置GICD将某个中断路由到某个CPU核上，说的是中断路由到哪异常级别。中断路由到不同的异常级别，主要涉及下面三个寄存器：  SCR_EL3（安全配置寄存器，Secure Configuration Register） HCR_EL2（Hypervisor配置寄存器，Hypervisor Configuration...</div></div></div></a><a class="pagination-related" href="/blog/2025/07/22/linux/%E4%B8%AD%E6%96%AD/%E4%B8%AD%E6%96%AD%E4%B8%8B%E5%8D%8A%E9%83%A8/workqueue/" title="workqueue架构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-22</div><div class="info-item-2">workqueue架构</div></div><div class="info-2"><div class="info-item-1">主要讲一下linux中断下半部常用到的workqueue的软件架构。workqueue主要由worker pool和worker, workqueue pool, work和workqueue 5个结构体组成。这5个结构体之间的关系可以这么形容：  worker pool可以认为是一个包工头，worker就是这个包工头下面的工人，可以被雇佣，也可以被裁掉。 work是要派给包工头的材料，work pool你可以认为是一个仓库，先临时保存这些材料，等包工头干完了手头的事情，就可以从这个仓库里边取。 workqueue就是一个派活的人。  在系统初始化阶段有一堆叫cpu_worker_pools的包工头，两个包工头分别占据着一个cpu，一个包工头负责优先级高的活，一个包工头负责优先级低的活。两个包工头的nice值分别是-20，0（优先级就是100和120）。worker pool的初始化在start_kernel()-&gt;workqueue_init_early()中，初始化之后cpu与worker...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">ray.jk.hong</div><div class="author-info-description"></div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">41</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">14</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/ray-jk-hong"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E6%9E%84%E4%BD%93%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">结构体介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#GIC%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">2.</span> <span class="toc-text">GIC初始化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E7%9A%84%E7%BA%A7%E8%81%94"><span class="toc-number">3.</span> <span class="toc-text">中断控制器的级联</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E7%9A%84%E7%BA%A7%E8%81%94%E4%BB%8B%E7%BB%8D"><span class="toc-number">3.1.</span> <span class="toc-text">中断控制器的级联介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E7%9A%84%E7%BA%A7%E8%81%94%E4%B8%AD%E6%96%AD%E5%9B%9E%E8%B0%83%E4%BC%A0%E9%80%92"><span class="toc-number">3.2.</span> <span class="toc-text">中断控制器的级联中断回调传递</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#generic-handle-irq%E5%92%8Chandle-nested-irq%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-number">3.3.</span> <span class="toc-text">generic_handle_irq和handle_nested_irq的区别</span></a></li></ol></li></ol></div></div></div></div></main><footer id="footer"><div id="footer-wrap"></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js"></script><script src="/blog/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
