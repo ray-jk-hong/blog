@@ -1,0 +1,320 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>AI算力 | ray.jk.hong</title><meta name="author" content="ray.jk.hong"><meta name="copyright" content="ray.jk.hong"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="FLOPSFLOPS是floating point operations per second的缩写（注意是全部大写）、意思是”每秒浮点运算次数”。它常被用来估算电脑的执行效能，尤其是在使用到大量浮点运算的科学计算领域中。  MFLOPS(Mega FLOPS)：等于每秒一百万10^6次的浮点运算 GFLOPS(Giga FLOPS)：等于每秒十亿&#x3D;10^9次浮点运算 BFLOPS（Billion">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI算力">
+<meta property="og:url" content="https://ray-jk-hong.github.io/2025/08/13/ai/ai%E7%AE%97%E5%8A%9B/index.html">
+<meta property="og:site_name" content="ray.jk.hong">
+<meta property="og:description" content="FLOPSFLOPS是floating point operations per second的缩写（注意是全部大写）、意思是”每秒浮点运算次数”。它常被用来估算电脑的执行效能，尤其是在使用到大量浮点运算的科学计算领域中。  MFLOPS(Mega FLOPS)：等于每秒一百万10^6次的浮点运算 GFLOPS(Giga FLOPS)：等于每秒十亿&#x3D;10^9次浮点运算 BFLOPS（Billion">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-08-13T10:47:43.529Z">
+<meta property="article:modified_time" content="2025-08-13T10:47:43.529Z">
+<meta property="article:author" content="ray.jk.hong">
+<meta property="article:tag" content="ai">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "AI算力",
+  "url": "https://ray-jk-hong.github.io/2025/08/13/ai/ai%E7%AE%97%E5%8A%9B/",
+  "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-08-13T10:47:43.529Z",
+  "dateModified": "2025-08-13T10:47:43.529Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "ray.jk.hong",
+      "url": "https://ray-jk-hong.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/img/favicon.png"><link rel="canonical" href="https://ray-jk-hong.github.io/2025/08/13/ai/ai%E7%AE%97%E5%8A%9B/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/blog/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'AI算力',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><script src="/js/bandev.js"></script><meta name="generator" content="Hexo 7.3.0"><style>mjx-container[jax="SVG"] {
+  direction: ltr;
+}
+
+mjx-container[jax="SVG"] > svg {
+  overflow: visible;
+}
+
+mjx-container[jax="SVG"][display="true"] {
+  display: block;
+  text-align: center;
+  margin: 1em 0;
+}
+
+mjx-container[jax="SVG"][justify="left"] {
+  text-align: left;
+}
+
+mjx-container[jax="SVG"][justify="right"] {
+  text-align: right;
+}
+
+g[data-mml-node="merror"] > g {
+  fill: red;
+  stroke: red;
+}
+
+g[data-mml-node="merror"] > rect[data-background] {
+  fill: yellow;
+  stroke: none;
+}
+
+g[data-mml-node="mtable"] > line[data-line] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > rect[data-frame] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > .mjx-dashed {
+  stroke-dasharray: 140;
+}
+
+g[data-mml-node="mtable"] > .mjx-dotted {
+  stroke-linecap: round;
+  stroke-dasharray: 0,140;
+}
+
+g[data-mml-node="mtable"] > svg {
+  overflow: visible;
+}
+
+[jax="SVG"] mjx-tool {
+  display: inline-block;
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+[jax="SVG"] mjx-tool > mjx-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+mjx-tool > mjx-tip {
+  display: inline-block;
+  padding: .2em;
+  border: 1px solid #888;
+  font-size: 70%;
+  background-color: #F8F8F8;
+  color: black;
+  box-shadow: 2px 2px 5px #AAAAAA;
+}
+
+g[data-mml-node="maction"][data-toggle] {
+  cursor: pointer;
+}
+
+mjx-status {
+  display: block;
+  position: fixed;
+  left: 1em;
+  bottom: 1em;
+  min-width: 25%;
+  padding: .2em .4em;
+  border: 1px solid #888;
+  font-size: 90%;
+  background-color: #F8F8F8;
+  color: black;
+}
+
+foreignObject[data-mjx-xml] {
+  font-family: initial;
+  line-height: normal;
+  overflow: visible;
+}
+
+.MathJax path {
+  stroke-width: 3;
+}
+
+mjx-container[display="true"] {
+  overflow: auto hidden;
+}
+
+mjx-container[display="true"] + br {
+  display: none;
+}
+</style></head><body><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"></a><a class="nav-page-title" href="/blog/"><span class="site-name">AI算力</span></a></span><div id="menus"></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">AI算力</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-categories"><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/ai/">ai</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><h2 id="FLOPS"><a href="#FLOPS" class="headerlink" title="FLOPS"></a>FLOPS</h2><p>FLOPS是<code>floating point operations per second</code>的缩写（注意是全部大写）、意思是”每秒浮点运算次数”。<br>它常被用来估算电脑的执行效能，尤其是在使用到大量浮点运算的科学计算领域中。</p>
+<ul>
+<li>MFLOPS(Mega FLOPS)：等于每秒一百万10^6次的浮点运算</li>
+<li>GFLOPS(Giga FLOPS)：等于每秒十亿=10^9次浮点运算</li>
+<li>BFLOPS（Billion FLOPS）：等于每秒十亿=10^9次浮点运算、与GFLOPS是一样的</li>
+<li>TFLOPS（teraFLOPS）：等于每秒一万亿=10^12次浮点运算 </li>
+<li>PFLOPS（petaFLOPS）：等于每秒一千万亿=10^15次浮点运算</li>
+<li>EFLOPS（exaFLOPS）：等于每秒一佰京=10^18次浮点运算</li>
+</ul>
+<h2 id="FLOPs"><a href="#FLOPs" class="headerlink" title="FLOPs"></a>FLOPs</h2><p>FLOPs是<code>floating point operations</code>的缩写（注意最后一个是小写）、是”浮点运算次数”。<br>它常备用来衡量算法和模型的复杂度。</p>
+<h2 id="FP"><a href="#FP" class="headerlink" title="FP"></a>FP</h2><p>FP是<code>floating point</code>的缩写、是指浮点数。浮点数在AI运算中、有很多不同的格式。所以在上述<code>TFLOPS</code>描述算力的时候、也是要区分是使用的哪种浮点格式、因为芯片对不同浮点格式的算力都是不同的。<br>它由三个部分组成：</p>
+<ul>
+<li>sign：符号位</li>
+<li>exponent：指数位</li>
+<li>fraction/mantissa：小数位/尾数位、意思一样、下面都以fraction统一</li>
+</ul>
+<p>不同的浮点数格式有不同的位数分配给这三个部分，从而影响了它们能表示的数值范围和精度。</p>
+<h3 id="FP64"><a href="#FP64" class="headerlink" title="FP64"></a>FP64</h3><p>FP64是指双精度浮点数格式、是使用64bit表示的浮点数。其中1bit的sign、11bit的exponent、52位用于fraction。<br>它的数值范围大约是2.23e-308到1.80e308、精度大约是15到17位有效数字。它通常用于科学计算中对精度要求较高的场合、但在深度学习中不常用、因为占用的内存和计算资源较多。</p>
+<h3 id="FP32"><a href="#FP32" class="headerlink" title="FP32"></a>FP32</h3><p>FP32是指float32单精度浮点格式。FP32是<code>IEEE 754</code>标准定义的浮点格式、使用了32bit表示了一个浮点数。其中1位用于sign，8位用于exponent，23位用于fraction。它的数值范围大约是1.18e-38到3.40e38，精度大约是6到9位有效数字。它是深度学习中长期使用的标准格式，因为它能平衡数值范围和精度，同时也有较好的硬件支持。</p>
+<h3 id="FP16"><a href="#FP16" class="headerlink" title="FP16"></a>FP16</h3><p>FP16是指半精度浮点数格式、使用16bit表示浮点数。其中1位用于sign，5位用于exponent，10位用于fraction。它的数值范围大约是6.10e-5到6.55e4，精度大约是3到4位有效数字。它是近年来在深度学习中越来越流行的格式、因为它能节省内存和计算资源，同时也有张量核心（Tensor Core）等专门的硬件加速器。但它的缺点是数值范围和精度较低，可能导致数值溢出或下溢的问题。</p>
+<h3 id="BFLOAT16"><a href="#BFLOAT16" class="headerlink" title="BFLOAT16"></a>BFLOAT16</h3><p>BFLOAT16（Brain Floating Point 16）使用16bit表示浮点数。其中1位用于sign，8位用于exponent，7位用于fraction。它的数值范围和FP32相同，但精度只有2位有效数字。它是由Google提出的一种针对深度学习优化的格式，它的优点是能保持和FP32相同的数值范围，从而避免数值溢出或下溢的问题，同时也能节省内存和计算资源，提高训练速度。它的缺点是精度较低，可能导致数值不稳定或精度损失的问题。</p>
+<h3 id="TF32"><a href="#TF32" class="headerlink" title="TF32"></a>TF32</h3><p>TF32(TensorFloat 32)使用32bit来表示浮点数。其中1位用于sign，8位用于exponent，10位用于fraction，剩余的13位被忽略。它的数值范围和FP32相同，但精度只有3到4位有效数字。它是由NVIDIA在Ampere架构中推出的一种专为深度学习设计的格式，它的优点是能保持和FP32相同的数值范围，同时也能利用张量核心（Tensor Core）等专门的硬件加速器，提高训练速度。它的缺点是精度较低，可能导致数值不稳定或精度损失的问题</p>
+<h3 id="浮点数表示"><a href="#浮点数表示" class="headerlink" title="浮点数表示"></a>浮点数表示</h3><p>根据<code>IEEE 754</code>、一个浮点数的表示的计算公式如下：</p>
+<img width="495" height="56" alt="image" src="https://github.com/user-attachments/assets/5afdae28-2ff4-415f-bf53-8693d6e092f5">
+
+<p>上述<code>sign/exponent/fraction</code>三个域的表示如下：</p>
+<img src="/blog/2025/08/13/ai/ai%E7%AE%97%E5%8A%9B/ai%E7%AE%97%E5%8A%9B-01.png" class="" title="图片描述">
+
+<p>上面的图只是表示了<code>sign</code>/<code>exponent</code>/<code>fraction</code>三个部分占用的bit位、并不是实际的值。根据计算公式、我们要计算如下几个部分：</p>
+<ol>
+<li><code>sign</code>：这个是表示符号位、0表示正数、1表示负数</li>
+<li><code>exponent</code>：指数位，表示 2 的幂次</li>
+<li><code>bias</code>：指数的偏移量。不同精度的浮点数、这个值不一样、且是固定的。对于单精度、这个值是127。</li>
+<li><code>fraction</code>：没法描述、看下面的例子</li>
+</ol>
+<h3 id="FP32-1"><a href="#FP32-1" class="headerlink" title="FP32"></a>FP32</h3><p>假设我们有一个单精度浮点数的二进制表示：</p>
+<p><code>1 10000010 10100000000000000000000</code></p>
+<ul>
+<li>sign值是1表示是负数</li>
+<li>exponent值是<code>10000010</code> = 130</li>
+<li>bias的值固定位127</li>
+<li>fraction是<code>10100000000000000000000</code>、把后面无用的0去掉表示成<code>0.101</code>(注意这个是二进制)、将其换成十进制就是<code>0.625</code>。前面加上1。结果是<code>1.625</code>（十进制）</li>
+</ul>
+<p>所以结果就是：<code>(-1)^1 ×1.625 × 2^3 = -1.625 ×8 = -13.0</code></p>
+<p>fraction计算中、将小数的二进制转成十进制的计算方法如下：<br>例如将<code>1.1001000000</code>（二进制）换算成十进制如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 第一种计算方式</span><br><span class="line"><span class="number">1.1001000000</span> = <span class="number">1</span> * <span class="number">2</span>^<span class="number">0</span> + <span class="number">1</span> * <span class="number">2</span>^(<span class="number">-1</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-2</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-3</span>) + <span class="number">1</span> * <span class="number">2</span>^(<span class="number">-4</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-5</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-6</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-7</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-8</span>) + <span class="number">0</span> * <span class="number">2</span>^(<span class="number">-9</span>) = <span class="number">1.5625</span></span><br><span class="line"># 第二种计算方式</span><br><span class="line"><span class="number">1.1001000000</span> = <span class="number">1</span> + <span class="number">576</span>(<span class="number">1001000000</span>变成<span class="number">10</span>进制)/<span class="number">1024</span> = <span class="number">1.5625</span></span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io">ray.jk.hong</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io/2025/08/13/ai/ai%E7%AE%97%E5%8A%9B/">https://ray-jk-hong.github.io/2025/08/13/ai/ai%E7%AE%97%E5%8A%9B/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://ray-jk-hong.github.io" target="_blank">ray.jk.hong</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/ai/">ai</a></div><div class="post-share"><div class="social-share" data-image="/blog/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/2025/08/07/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/ext4/" title="ext4文件系统"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">ext4文件系统</div></div><div class="info-2"><div class="info-item-1">创建挂载文件系统创建文件按如下命令创建1GB的文件： 1dd if=/dev/zero of=./ext4_image.img bs=1M count=1024  格式化按如下命令将文件格式化成ext4文件系统： 1mkfs.ext4 ext4_image.img  挂载文件系统通过Linux的loop虚拟设备将文件挂载到目录上： 1sudo mount -o loop ext4_image.img /home/biao/test/ext4/ext4_simulator  查看文件系统信息按照如下命令、将挂载之后的文件系统文件信息打印出来： 1dumpe2fs ext4_image.img  执行之后内容如下： 12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576dumpe2fs 1.44.1 (24-Mar-2018)Filesystem...</div></div></div></a><a class="pagination-related" href="/blog/2025/08/13/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/%E5%9D%97%E8%AE%BE%E5%A4%87%E5%9F%BA%E7%A1%80/" title="块设备基础"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">块设备基础</div></div><div class="info-2"><div class="info-item-1">数据处理流程  假设传文件fd和offset调用read()系统调用，会以如下数据流最终调用到块设备驱动。  vfs决定是从Page Cache(上图中的Disk cache)中读，还是继续从文件系统中读。Page Cache会在后续补充，这里只看从文件系统中读的场景。 vfs通过相应的（每个目录的文件系统不同）文件系统接口找到对应的inode。 Generic block layer准备组织数据（IO调度）并将数据发给真正的块设备。数据会被组织成一连串bio。 最终，块设备驱动的request回调会被调用，并将数据真正写入到块设备中（SSD或者tmpfs等）。  这篇主要讲3，4涉及的块设备。1，2的内容参考文件系统篇。 块设备驱动块设备驱动介绍我们先讲底层驱动，再讲其上层的块设备内容(block目录下的内容)。块设备驱动，一句话就是接收下面的块设备发过来的数据，并将数据写入到真正的设备的过程（这里也可能是内存，例如shmem）。 块设备驱动注册块设备主设备号下面两个函数是块设备的主设备申请和释放的接口：int register_blkdev(unsigned int...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/2025/07/13/ai/cuda/cuda%E4%BB%8B%E7%BB%8D/" title="CUDA介绍"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-13</div><div class="info-item-2">CUDA介绍</div></div><div class="info-2"><div class="info-item-1">介绍GPU架构 GPU是基于一系列Streaming Multiprocessors（SM构建的（更多详情请参阅“硬件实现”）。多线程程序被划分为多个彼此独立执行的线程块，因此，拥有更多多处理器的GPU执行程序的时间会比拥有较少多处理器的GPU更短。SM是NVIDIA GPU上的物理硬件执行单元。一个GPU芯片由多个SM组成。SM 是 GPU 上的物理硬件单元，负责实际计算。 编程模型介绍Grid, Block, Thread是编程模型中的核心概念。每个Grid可以包含若干个（1维或者2维）的Block。每个Block又包含若干个（1维或者2维）Thread。每个Thread就是执行下面所谓核函数的最基本的单元。核函数定义如下： 12345__global__ void VecAdd(float* A, float* B, float* C){    int i = threadIdx.x;    C[i] = A[i] + B[i];} 核函数的定义需要在最前面添加__global__标记位、返回值也是void。 核函数执行如下： 123456int main(){   ...</div></div></div></a><a class="pagination-related" href="/blog/2025/07/13/ai/cuda/cuda%E5%86%85%E5%AD%98/" title="CUDA内存"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-13</div><div class="info-item-2">CUDA内存</div></div><div class="info-2"><div class="info-item-1">介绍内存分类  CUDA thread在核函数执行的时候、访问多种内存空间。以下是内存类型： local内存只能thread内部访问的内存 shared内存位置：设备内存、比global内存快形式：关键字__shared__添加到变量声明中、如__shared__ float cachep[10]目的：对于GPU上启动的每个线程块（block）、CUDA C编译器都将创建该共享变量的一个副本。线程块中的每个线程都共享这块内存，但线程却无法看到也不能修改其他线程块的变量副本。这样使得一个线程块中的多个线程能够在计算上通信和协作 就是说此类内存、可以在block内部的所有thread之间共享的内存。 global内存设备内存、所有的thread都能访问、但不在片内、访问速度较慢。 constant内存位置：设备内存、不是片内的内存、访问速度也较慢、是只读内存。形式：关键__constant__添加到变量声明中、如__constant__ float...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">ray.jk.hong</div><div class="author-info-description"></div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">50</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">15</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/ray-jk-hong"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#FLOPS"><span class="toc-number">1.</span> <span class="toc-text">FLOPS</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#FLOPs"><span class="toc-number">2.</span> <span class="toc-text">FLOPs</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#FP"><span class="toc-number">3.</span> <span class="toc-text">FP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#FP64"><span class="toc-number">3.1.</span> <span class="toc-text">FP64</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#FP32"><span class="toc-number">3.2.</span> <span class="toc-text">FP32</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#FP16"><span class="toc-number">3.3.</span> <span class="toc-text">FP16</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BFLOAT16"><span class="toc-number">3.4.</span> <span class="toc-text">BFLOAT16</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TF32"><span class="toc-number">3.5.</span> <span class="toc-text">TF32</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%AE%E7%82%B9%E6%95%B0%E8%A1%A8%E7%A4%BA"><span class="toc-number">3.6.</span> <span class="toc-text">浮点数表示</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#FP32-1"><span class="toc-number">3.7.</span> <span class="toc-text">FP32</span></a></li></ol></li></ol></div></div></div></div></main><footer id="footer"><div id="footer-wrap"></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js"></script><script src="/blog/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
