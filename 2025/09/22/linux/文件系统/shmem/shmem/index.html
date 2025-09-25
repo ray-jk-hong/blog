@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>shmem | ray.jk.hong</title><meta name="author" content="ray.jk.hong"><meta name="copyright" content="ray.jk.hong"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="介绍页面类型通常Linux系统中，主要的页面类型如下：   主要的类型有Page Cache类型和Swap Cache类型。而shmem页面既有匿名页的特点（page-&gt;flags设置PG_swapbacked , 具有swap功能），也有文件页的特点（inode-&gt;i_mapping-&gt;a_ops &#x3D; &amp;shmem_aops, 关联文件，有page cache">
+<meta property="og:type" content="article">
+<meta property="og:title" content="shmem">
+<meta property="og:url" content="https://ray-jk-hong.github.io/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/index.html">
+<meta property="og:site_name" content="ray.jk.hong">
+<meta property="og:description" content="介绍页面类型通常Linux系统中，主要的页面类型如下：   主要的类型有Page Cache类型和Swap Cache类型。而shmem页面既有匿名页的特点（page-&gt;flags设置PG_swapbacked , 具有swap功能），也有文件页的特点（inode-&gt;i_mapping-&gt;a_ops &#x3D; &amp;shmem_aops, 关联文件，有page cache">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-09-22T12:13:49.485Z">
+<meta property="article:modified_time" content="2025-09-22T12:13:49.485Z">
+<meta property="article:author" content="ray.jk.hong">
+<meta property="article:tag" content="文件系统">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ray-jk-hong.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "shmem",
+  "url": "https://ray-jk-hong.github.io/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/",
+  "image": "https://ray-jk-hong.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-09-22T12:13:49.485Z",
+  "dateModified": "2025-09-22T12:13:49.485Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "ray.jk.hong",
+      "url": "https://ray-jk-hong.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/blog/img/favicon.png"><link rel="canonical" href="https://ray-jk-hong.github.io/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/blog/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/blog/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'shmem',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><script src="/js/bandev.js"></script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/blog/"></a><a class="nav-page-title" href="/blog/"><span class="site-name">shmem</span></a></span><div id="menus"></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">shmem</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-categories"><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/blog/categories/linux/">linux</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><h3 id="页面类型"><a href="#页面类型" class="headerlink" title="页面类型"></a>页面类型</h3><p>通常Linux系统中，主要的页面类型如下：</p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-01.png" class="" title="图片描述">
+
+<p>主要的类型有Page Cache类型和Swap Cache类型。而shmem页面既有匿名页的特点（page-&gt;flags设置PG_swapbacked , 具有swap功能），也有文件页的特点（inode-&gt;i_mapping-&gt;a_ops &#x3D; &amp;shmem_aops, 关联文件，有page cache）。（在哪里设置了这个?）</p>
+<h3 id="LRU类型"><a href="#LRU类型" class="headerlink" title="LRU类型"></a>LRU类型</h3><p>Linux内核中匿名页通过Swap方式、文件页通过Page Cache方式缓存。这些页会被加入到对应的LRU链表中进行老化回收等操作。LRU的链表类型定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">lru_list</span> &#123;</span></span><br><span class="line">	LRU_INACTIVE_ANON = LRU_BASE,</span><br><span class="line">	LRU_ACTIVE_ANON = LRU_BASE + LRU_ACTIVE,</span><br><span class="line">	LRU_INACTIVE_FILE = LRU_BASE + LRU_FILE,</span><br><span class="line">	LRU_ACTIVE_FILE = LRU_BASE + LRU_FILE + LRU_ACTIVE,</span><br><span class="line">	LRU_UNEVICTABLE,</span><br><span class="line">	NR_LRU_LISTS</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>上面也说过、shmem虽然是以文件系统的形式、但又有匿名页的特点。它会被加入到匿名页的LRU中。</p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-02.png" class="" title="图片描述">
+
+<h3 id="软件架构"><a href="#软件架构" class="headerlink" title="软件架构"></a>软件架构</h3><p>shmem是memfd_create、shmget等机制的内核基础。其架构如下：</p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-03.png" class="" title="图片描述">
+
+<h3 id="共享原理"><a href="#共享原理" class="headerlink" title="共享原理"></a>共享原理</h3><p>通过shmem实现进程间共享的原理如下：</p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-04.png" class="" title="图片描述">
+
+<p>如图所示，以memfd为例，实现内存共享的步骤如下：</p>
+<ol>
+<li>通过memfd系统调用等方式创建文件描述符（fd）。</li>
+</ol>
+<p>例子中send进程会通过memfd系统调用来获得一个没有使用的fd，并将fd关联文件实例（file），这个file就会关联一片共享内存。</p>
+<ol start="2">
+<li>将文件描述符传递给其他进程来实现共享。</li>
+</ol>
+<p>如例子中通过unix socket传递文件描述符，实际上传递文件描述符是在接收方申请一个没有使用的文件描述符，然后关联共享内存对应的file。</p>
+<p>例如：send进程的文件描述符fd&#x3D;4会关联共享内存对应的file，recv进程的文件描述符fd&#x3D;5也会关联共享内存对应的file。</p>
+<p>可以看的出来，虽然是传递文件描述符，但是他们的相关文件描述符并不一定一样，只是指向相同的关联共享内存的file罢了。</p>
+<ol start="3">
+<li><p>send&#x2F;recv进程通过mmap映射共享内存到进程虚拟地址空间。</p>
+</li>
+<li><p>send进程首次写访问数据</p>
+</li>
+</ol>
+<p>这个时候会发生缺页异常，page cache查询不到物理页面PAGE1，会申请物理页面并加入文件实例对应的page cache，并通过页表映射PAGE1到send进程的虚拟地址空间。</p>
+<p>缺页返回后，将数据写入PAGE1（这里都是’a’）。</p>
+<ol start="5">
+<li>recv进程首次读访问数据</li>
+</ol>
+<p>同样也会发生缺页异常，但是会首先查询page cache，发现PAGE1，然后通过页表映射PAGE1到recv进程的虚拟地址空间。</p>
+<p>缺页返回后，从PAGE1读出数据（这里都是’a’），于是实现了内存共享。</p>
+<h2 id="缺页处理"><a href="#缺页处理" class="headerlink" title="缺页处理"></a>缺页处理</h2><p>缺页处理流程如下：    </p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-05.png" class="" title="图片描述">
+
+<p>缺页处理步骤框图如下：</p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-06.png" class="" title="图片描述">
+
+<p>下面讲解下，shmem页面的缺页处理步骤：</p>
+<p>缺页发生时，</p>
+<ol>
+<li>查找或分配物理页面</li>
+</ol>
+<p>1.1先从page cache中查找</p>
+<p>相关的物理页面可能已经被其他线程加入了page cache，所以首先从page cache查找。    </p>
+<p>1.2找不到从swap cache中查找</p>
+<p>页面有可能在回收等场景被加入了swap cache，所以在这里也查找下。</p>
+<p>1.3 找不到如果之前有swap out 则swap in</p>
+<p>之前如果由于内存回收等场景相关页面被swap out到swap device,那么相关的swap cache对应的位置会被替换为swap entry, 这个时候根据swap entry从swap device中读取物理页面内容。</p>
+<p>1.4 否则分配新的folio</p>
+<p>上面都尝试了查找但是没有找到，那么有可能是第一次访问这个页面，这个时候需要分配新的物理页面，既是folio。</p>
+<ol start="2">
+<li>加入lru</li>
+</ol>
+<p>shmem会被加入匿名的lru中，以便内存回收都场景回收到swap device。</p>
+<ol start="3">
+<li>页表映射</li>
+</ol>
+<p>将相关的物理页面通过页表映射到进程的虚拟地址空间，这样后面进程就可以正常访问页面数据了。</p>
+<h2 id="回收"><a href="#回收" class="headerlink" title="回收"></a>回收</h2><p>回收shmem页面流程如下：</p>
+<img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-07.png" class="" title="图片描述">
+
+<p>由于shmem页面回收比较复杂，下面我们分主要步骤进行图解：</p>
+<h3 id="从LRU中隔离"><a href="#从LRU中隔离" class="headerlink" title="从LRU中隔离"></a>从LRU中隔离</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-08.png" class="" title="图片描述">
+
+<h3 id="申请页面的Page-Lock"><a href="#申请页面的Page-Lock" class="headerlink" title="申请页面的Page Lock"></a>申请页面的Page Lock</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-09.png" class="" title="图片描述">
+
+<h3 id="rmap解除这个页面的所有页表映射"><a href="#rmap解除这个页面的所有页表映射" class="headerlink" title="rmap解除这个页面的所有页表映射"></a>rmap解除这个页面的所有页表映射</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-10.png" class="" title="图片描述">
+
+<h3 id="分配swap-entry-页面加入swap-cache"><a href="#分配swap-entry-页面加入swap-cache" class="headerlink" title="分配swap entry,页面加入swap cache"></a>分配swap entry,页面加入swap cache</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-11.png" class="" title="图片描述">
+
+<h3 id="替换页面的page-cache为swap-entry"><a href="#替换页面的page-cache为swap-entry" class="headerlink" title="替换页面的page cache为swap entry"></a>替换页面的page cache为swap entry</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-12.png" class="" title="图片描述">
+
+<h3 id="页面从swap-cache中删除"><a href="#页面从swap-cache中删除" class="headerlink" title="页面从swap cache中删除"></a>页面从swap cache中删除</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-13.png" class="" title="图片描述">
+
+<h3 id="页面内容写入swap-device"><a href="#页面内容写入swap-device" class="headerlink" title="页面内容写入swap device"></a>页面内容写入swap device</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-14.png" class="" title="图片描述">
+
+<h3 id="释放页面的page-lock"><a href="#释放页面的page-lock" class="headerlink" title="释放页面的page lock"></a>释放页面的page lock</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-15.png" class="" title="图片描述">
+
+<h3 id="页面还给buddy"><a href="#页面还给buddy" class="headerlink" title="页面还给buddy"></a>页面还给buddy</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-16.png" class="" title="图片描述">
+
+<p>这里需要注意一点的是：shmem页面回收时保存swap entry的方式跟匿名页完全不一样，匿名页在回收时，会将相应的swap entry替换为原来的页表项，而shmem页面会直接清掉原来的页表项，会将swap entry替换为对应的swap cache的位置。   </p>
+<h2 id="shmem文件系统流程"><a href="#shmem文件系统流程" class="headerlink" title="shmem文件系统流程"></a>shmem文件系统流程</h2><p>shmem就是linux内种tmpfs文件系统。之所以叫tmpfs、就是因为shmem是以内存来实现文件系统、所以掉电以后保存在tmpfs中的所有内容就会丢失。</p>
+<h3 id="挂载"><a href="#挂载" class="headerlink" title="挂载"></a>挂载</h3><h4 id="tmpfs注册文件系统"><a href="#tmpfs注册文件系统" class="headerlink" title="tmpfs注册文件系统"></a>tmpfs注册文件系统</h4><p>在shmem模块初始化的时候、通过register_filesystem将file_system_type注册给文件系统。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">file_system_type</span> <span class="title">shmem_fs_type</span> =</span> &#123;</span><br><span class="line">    .owner      = THIS_MODULE,</span><br><span class="line">    .name       = <span class="string">&quot;tmpfs&quot;</span>,</span><br><span class="line">    .init_fs_context = shmem_init_fs_context, <span class="comment">// 初始化上下文</span></span><br><span class="line">    .parameters = shmem_fs_parameters,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __init <span class="title function_">shmem_init</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">    register_filesystem(&amp;shmem_fs_type); <span class="comment">// 注册tmpfs文件系统类型</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="文件系统上下文"><a href="#文件系统上下文" class="headerlink" title="文件系统上下文"></a>文件系统上下文</h4><p>当挂载tmpfs时、内核会回调上面的shmem_init_fs_context函数初始化文件系统上下文、设置super block的函数回调。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/shmem.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">shmem_init_fs_context</span><span class="params">(<span class="keyword">struct</span> fs_context *fc)</span> &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">shmem_options</span> *<span class="title">ctx</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    fc-&gt;s_fs_info = ctx;</span><br><span class="line">    fc-&gt;ops = &amp;shmem_fs_context_ops; <span class="comment">// 设置文件系统上下文操作</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>文件系统上下文回调函数列表如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">fs_context_operations</span> <span class="title">shmem_fs_context_ops</span> =</span> &#123;</span><br><span class="line">	.<span class="built_in">free</span>			= shmem_free_fc,</span><br><span class="line">	.get_tree		= shmem_get_tree,</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_TMPFS</span></span><br><span class="line">	.parse_monolithic	= shmem_parse_options,</span><br><span class="line">	.parse_param		= shmem_parse_one,</span><br><span class="line">	.reconfigure		= shmem_reconfigure,</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="超级块填充"><a href="#超级块填充" class="headerlink" title="超级块填充"></a>超级块填充</h4><p>在mount系统调用的后续流程中，VFS 最终会调用到shmem文件系统提供的用于填充超级块的函数。填充超级块的函数就是shmem_fill_super。此函数通过上面文件系统上下文的回调函数shmem_get_tree调进来。shmem_fill_super主要做如下几个事情。</p>
+<ol>
+<li>设置超级块操作表</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">super_operations</span> <span class="title">shmem_ops</span> =</span> &#123;</span><br><span class="line">    .alloc_inode    = shmem_alloc_inode,</span><br><span class="line">    .free_inode     = shmem_free_inode,</span><br><span class="line">    .statfs         = shmem_statfs,</span><br><span class="line">    .show_options   = shmem_show_options,</span><br><span class="line">&#125;;</span><br><span class="line">sb-&gt;s_op = &amp;shmem_ops;</span><br></pre></td></tr></table></figure>
+
+<p>这告诉 VFS，当它需要为这个文件系统分配&#x2F;释放 inode、统计文件系统信息等操作时，应该调用 shmem 提供的这些函数。</p>
+<ol start="2">
+<li>设置最大文件大小等参数：</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sb-&gt;s_maxbytes = MAX_LFS_FILESIZE; <span class="comment">// 最大文件大小</span></span><br><span class="line">sb-&gt;s_blocksize = PAGE_SIZE;       <span class="comment">// 块大小 = 内存页大小</span></span><br><span class="line">sb-&gt;s_blocksize_bits = PAGE_SHIFT;</span><br><span class="line">sb-&gt;s_magic = TMPFS_MAGIC;         <span class="comment">// 文件系统魔数</span></span><br><span class="line">sb-&gt;s_flags |= SB_NOSEC;           <span class="comment">// 文件系统标志</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>创建根 inode 和根目录项：</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">inode</span> *<span class="title">inode</span> =</span> shmem_get_inode(sb, <span class="literal">NULL</span>, S_IFDIR | <span class="number">0777</span>, <span class="number">0</span>, VM_NORESERVE);</span><br><span class="line">sb-&gt;s_root = d_make_root(inode);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>调用 shmem_get_inode() 为根目录创建一个 inode。这个函数是 shmem 分配 inode 的核心，它会初始化一个内存中的 inode。</p>
+</li>
+<li><p>d_make_root() 为根 inode 创建一个目录项（dentry）。</p>
+</li>
+</ul>
+<ol start="4">
+<li>初始化私有数据：</li>
+</ol>
+<p>shmem会将一些自己的特定信息（如统计信息）存储在sb-&gt;s_fs_info 中。</p>
+<h4 id="创建inode时设置文件操作回调函数表"><a href="#创建inode时设置文件操作回调函数表" class="headerlink" title="创建inode时设置文件操作回调函数表"></a>创建inode时设置文件操作回调函数表</h4><p>当在tmpfs中创建文件或目录时，会调用 shmem_get_inode() 创建inode，并为其设置文件操作函数表 shmem_file_operations：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/shmem.c</span></span><br><span class="line"><span class="keyword">struct</span> inode *<span class="title function_">shmem_get_inode</span><span class="params">(<span class="keyword">struct</span> super_block *sb, <span class="type">const</span> <span class="keyword">struct</span> inode *dir,</span></span><br><span class="line"><span class="params">                             <span class="type">umode_t</span> mode, <span class="type">dev_t</span> dev, <span class="type">unsigned</span> <span class="type">long</span> flags)</span> &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">inode</span> *<span class="title">inode</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    inode_init_owner(&amp;init_user_ns, inode, dir, mode);</span><br><span class="line">    inode-&gt;i_ino = ino;</span><br><span class="line">    inode-&gt;i_mapping-&gt;a_ops = &amp;shmem_aops; <span class="comment">// 地址空间操作</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置文件操作函数表</span></span><br><span class="line">    <span class="keyword">if</span> (S_ISREG(mode)) &#123; <span class="comment">// 普通文件</span></span><br><span class="line">        inode-&gt;i_op = &amp;shmem_inode_operations;  <span class="comment">// inode操作</span></span><br><span class="line">        inode-&gt;i_fop = &amp;shmem_file_operations;  <span class="comment">// 文件操作表（关键！）</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (S_ISDIR(mode)) &#123; <span class="comment">// 目录文件</span></span><br><span class="line">        inode-&gt;i_op = &amp;shmem_dir_inode_operations;</span><br><span class="line">        inode-&gt;i_fop = &amp;simple_dir_operations;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">return</span> inode;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述函数中、在创建inode的时候、就会将shmem_file_operations设置到inode-&gt;i_fop中。shmem_file_operations就是一个file_operations结构体。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/shmem.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">file_operations</span> <span class="title">shmem_file_operations</span> =</span> &#123;</span><br><span class="line">    .mmap       = shmem_mmap,</span><br><span class="line">    .open       = shmem_file_open,</span><br><span class="line">    .read_iter  = shmem_file_read_iter,</span><br><span class="line">    .write_iter = shmem_file_write_iter,</span><br><span class="line">    .fsync      = noop_fsync,</span><br><span class="line">    .splice_read    = generic_file_splice_read,</span><br><span class="line">    .splice_write   = iter_file_splice_write,</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="打开文件时关联file-f-op"><a href="#打开文件时关联file-f-op" class="headerlink" title="打开文件时关联file-&gt;f_op"></a>打开文件时关联file-&gt;f_op</h4><p>当用户打开一个tmpfs文件时，VFS会调用 do_dentry_open()，将 inode-&gt;i_fop 赋值给 file-&gt;f_op：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fs/open.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">do_dentry_open</span><span class="params">(<span class="keyword">struct</span> file *f,</span></span><br><span class="line"><span class="params">                          <span class="keyword">struct</span> inode *inode,</span></span><br><span class="line"><span class="params">                          <span class="type">int</span> (*open)(<span class="keyword">struct</span> inode *, <span class="keyword">struct</span> file *))</span> &#123;</span><br><span class="line">    f-&gt;f_mode = OPEN_FMODE(f-&gt;f_flags);</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    f-&gt;f_op = fops_get(inode-&gt;i_fop);  <span class="comment">// 将inode的i_fop赋给file-&gt;f_op</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">if</span> (!open)</span><br><span class="line">        open = f-&gt;f_op-&gt;open;  <span class="comment">// 调用文件系统的open方法（如shmem_file_open）</span></span><br><span class="line">    <span class="keyword">if</span> (open) &#123;</span><br><span class="line">        error = open(inode, f);</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于tmpfs文件，inode-&gt;i_fop 是 shmem_file_operations，因此 file-&gt;f_op 被赋值为 shmem_file_operations。</p>
+<h3 id="读流程"><a href="#读流程" class="headerlink" title="读流程"></a>读流程</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-17.png" class="" title="图片描述">
+
+<p>读流程如下：</p>
+<ol>
+<li><p>按照page cache -&gt; swap cache -&gt; swap device顺序查找文件页面</p>
+</li>
+<li><p>查找并拷贝页面内容到用户空间缓冲区、如果找到，则拷贝文件页面数据到用户空间缓冲区。如果没有找到，则直接往用户空间缓冲区拷贝0。</p>
+</li>
+<li><p>更新文件读写位置</p>
+</li>
+</ol>
+<p>这里需要注意的是：对于tmpfs文件系统中的文件的读操作来说，按照page cache -&gt; swap cache -&gt; swap device顺序如果查找不到页面，则不会分配新的页面，只会往用户空间缓冲区拷贝0（这有点类似匿名页的第一次读，一般会映射到0页），这种情况也说明了相关文件偏移的页面从来没有被人写访问过。</p>
+<h3 id="写流程"><a href="#写流程" class="headerlink" title="写流程"></a>写流程</h3><img src="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/shmem-18.png" class="" title="图片描述">
+
+<p>写tmpfs文件的主要步骤如下：</p>
+<ol>
+<li><p>查找或分配文件页面、按照page cache -&gt; swap cache -&gt; swap device顺序查找，如果找到，继续下一步。如果没找到，则分配新的页面</p>
+</li>
+<li><p>从用户空间缓冲区拷贝数据到文件页面</p>
+</li>
+<li><p>标记页面为脏</p>
+</li>
+</ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/feelabclihu/article/details/136003853">https://blog.csdn.net/feelabclihu/article/details/136003853</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io">ray.jk.hong</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://ray-jk-hong.github.io/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/">https://ray-jk-hong.github.io/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/shmem/shmem/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://ray-jk-hong.github.io" target="_blank">ray.jk.hong</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/blog/tags/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">文件系统</a></div><div class="post-share"><div class="social-share" data-image="/blog/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/ext4/ext4-%E6%97%A5%E5%BF%97%E7%B3%BB%E7%BB%9F/" title="ext4日志系统"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">ext4日志系统</div></div><div class="info-2"><div class="info-item-1">https://blog.51cto.com/u_15181572/6173476 https://blog.csdn.net/SweeNeil/article/details/87935992 </div></div></div></a><a class="pagination-related" href="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/ext4/ext4%E5%9F%BA%E7%A1%80%E7%BB%93%E6%9E%84/" title="ext4基础结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">ext4基础结构</div></div><div class="info-2"><div class="info-item-1">创建挂载文件系统创建文件按如下命令创建1GB的文件： 1dd if=/dev/zero of=./ext4_image.img bs=1M count=1024  格式化按如下命令将文件格式化成ext4文件系统： 1mkfs.ext4 ext4_image.img  挂载文件系统通过Linux的loop虚拟设备将文件挂载到目录上： 1sudo mount -o loop ext4_image.img /home/biao/test/ext4/ext4_simulator  查看文件系统信息按照如下命令、将挂载之后的文件系统文件信息打印出来： 1dumpe2fs ext4_image.img  执行之后内容如下： 12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576dumpe2fs 1.44.1 (24-Mar-2018)Filesystem...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/blog/2025/08/13/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/bdev/%E5%9D%97%E8%AE%BE%E5%A4%87%E5%9F%BA%E7%A1%80/" title="块设备基础"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-08-13</div><div class="info-item-2">块设备基础</div></div><div class="info-2"><div class="info-item-1">数据处理流程  假设传文件fd和offset调用read()系统调用，会以如下数据流最终调用到块设备驱动。  vfs决定是从Page Cache(上图中的Disk cache)中读，还是继续从文件系统中读。Page Cache会在后续补充，这里只看从文件系统中读的场景。 vfs通过相应的（每个目录的文件系统不同）文件系统接口找到对应的inode。 Generic block layer准备组织数据（IO调度）并将数据发给真正的块设备。数据会被组织成一连串bio。 最终，块设备驱动的request回调会被调用，并将数据真正写入到块设备中（SSD或者tmpfs等）。  这篇主要讲3，4涉及的块设备。1，2的内容参考文件系统篇。 块设备驱动块设备驱动介绍我们先讲底层驱动，再讲其上层的块设备内容(block目录下的内容)。块设备驱动，一句话就是接收下面的块设备发过来的数据，并将数据写入到真正的设备的过程（这里也可能是内存，例如shmem）。 块设备驱动注册块设备主设备号下面两个函数是块设备的主设备申请和释放的接口：int register_blkdev(unsigned int...</div></div></div></a><a class="pagination-related" href="/blog/2025/09/25/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/btrfs/btrfs%E5%9F%BA%E7%A1%80%E7%BB%93%E6%9E%84/" title="btrfs基础结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-25</div><div class="info-item-2">btrfs基础结构</div></div><div class="info-2"><div class="info-item-1">介绍假设你要在btrfs中查找并读取某个文件中的内容，看一下btrfs是怎么一步一步处理请求的。 超级块和所有文件系统一样，你第一个能读到的而且也是最容易读到的就是本文件系统的超级块，因为超级块本身在磁盘中的大小和偏移都是固定的。btrfs的superblock在磁盘的64KB偏移的地方，这个定义在#define BTRFS_SUPER_INFO_OFFSET (64 * 1024)。 btrfs对应的超级块定义是btrfs_super_block，要在读到超级块之后解析后续要访问的树的根。所以btrfs_super_block首先要保存树根的逻辑块地址还要保存一个所谓的sys_chunk_array数组来讲树根的逻辑块地址转换成物理块地址。主要的几个成员如下： 12345struct btrfs_super_block &#123;    __le64 root;    __le64 chunk_root;    __u8...</div></div></div></a><a class="pagination-related" href="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/ext4/ext4-%E6%97%A5%E5%BF%97%E7%B3%BB%E7%BB%9F/" title="ext4日志系统"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-22</div><div class="info-item-2">ext4日志系统</div></div><div class="info-2"><div class="info-item-1">https://blog.51cto.com/u_15181572/6173476 https://blog.csdn.net/SweeNeil/article/details/87935992 </div></div></div></a><a class="pagination-related" href="/blog/2025/09/22/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/ext4/ext4%E5%9F%BA%E7%A1%80%E7%BB%93%E6%9E%84/" title="ext4基础结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-22</div><div class="info-item-2">ext4基础结构</div></div><div class="info-2"><div class="info-item-1">创建挂载文件系统创建文件按如下命令创建1GB的文件： 1dd if=/dev/zero of=./ext4_image.img bs=1M count=1024  格式化按如下命令将文件格式化成ext4文件系统： 1mkfs.ext4 ext4_image.img  挂载文件系统通过Linux的loop虚拟设备将文件挂载到目录上： 1sudo mount -o loop ext4_image.img /home/biao/test/ext4/ext4_simulator  查看文件系统信息按照如下命令、将挂载之后的文件系统文件信息打印出来： 1dumpe2fs ext4_image.img  执行之后内容如下： 12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576dumpe2fs 1.44.1 (24-Mar-2018)Filesystem...</div></div></div></a><a class="pagination-related" href="/blog/2025/08/19/linux/%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/io%E7%B3%BB%E7%BB%9F/page_cache/PageCache/" title="Page Cache"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-08-19</div><div class="info-item-2">Page Cache</div></div><div class="info-2"><div class="info-item-1">介绍Linux内核为了文件系统的读写性能、提供了page cache功能进行读写数据的缓存。这一功能存利用一部分系统物理内存，确保最重要、最常使用的块设备数据在操作时可直接从主内存获取，而无须从低速设备读取。物理内存还用于存储从块设备读取的数据，使得随后对该数据的访问可直接在物理内存进行，而无须从外部设备再次取用。Linux内核为块设备提供了两种缓存方案：(1) 页缓存（ page cache）针对以页为单位的所有操作，并考虑了特定体系结构上的页长度。一个主要的例子是许多章讨论过的内存映射技术。因为其他类型的文件访问也是基于内核中的这一技术实现的，所以页缓存实际上负责了块设备的大部分缓存工作。(2) 块缓存（ buffer...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/blog/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/blog/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">ray.jk.hong</div><div class="author-info-description"></div><div class="site-data"><a href="/blog/archives/"><div class="headline">文章</div><div class="length-num">53</div></a><a href="/blog/tags/"><div class="headline">标签</div><div class="length-num">15</div></a><a href="/blog/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/ray-jk-hong"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E9%9D%A2%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.1.</span> <span class="toc-text">页面类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LRU%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.2.</span> <span class="toc-text">LRU类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.</span> <span class="toc-text">软件架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B1%E4%BA%AB%E5%8E%9F%E7%90%86"><span class="toc-number">1.4.</span> <span class="toc-text">共享原理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%BA%E9%A1%B5%E5%A4%84%E7%90%86"><span class="toc-number">2.</span> <span class="toc-text">缺页处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9E%E6%94%B6"><span class="toc-number">3.</span> <span class="toc-text">回收</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8ELRU%E4%B8%AD%E9%9A%94%E7%A6%BB"><span class="toc-number">3.1.</span> <span class="toc-text">从LRU中隔离</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%B3%E8%AF%B7%E9%A1%B5%E9%9D%A2%E7%9A%84Page-Lock"><span class="toc-number">3.2.</span> <span class="toc-text">申请页面的Page Lock</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#rmap%E8%A7%A3%E9%99%A4%E8%BF%99%E4%B8%AA%E9%A1%B5%E9%9D%A2%E7%9A%84%E6%89%80%E6%9C%89%E9%A1%B5%E8%A1%A8%E6%98%A0%E5%B0%84"><span class="toc-number">3.3.</span> <span class="toc-text">rmap解除这个页面的所有页表映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E9%85%8Dswap-entry-%E9%A1%B5%E9%9D%A2%E5%8A%A0%E5%85%A5swap-cache"><span class="toc-number">3.4.</span> <span class="toc-text">分配swap entry,页面加入swap cache</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9B%BF%E6%8D%A2%E9%A1%B5%E9%9D%A2%E7%9A%84page-cache%E4%B8%BAswap-entry"><span class="toc-number">3.5.</span> <span class="toc-text">替换页面的page cache为swap entry</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E9%9D%A2%E4%BB%8Eswap-cache%E4%B8%AD%E5%88%A0%E9%99%A4"><span class="toc-number">3.6.</span> <span class="toc-text">页面从swap cache中删除</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E9%9D%A2%E5%86%85%E5%AE%B9%E5%86%99%E5%85%A5swap-device"><span class="toc-number">3.7.</span> <span class="toc-text">页面内容写入swap device</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%87%8A%E6%94%BE%E9%A1%B5%E9%9D%A2%E7%9A%84page-lock"><span class="toc-number">3.8.</span> <span class="toc-text">释放页面的page lock</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E9%9D%A2%E8%BF%98%E7%BB%99buddy"><span class="toc-number">3.9.</span> <span class="toc-text">页面还给buddy</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#shmem%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E6%B5%81%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">shmem文件系统流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%82%E8%BD%BD"><span class="toc-number">4.1.</span> <span class="toc-text">挂载</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#tmpfs%E6%B3%A8%E5%86%8C%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="toc-number">4.1.1.</span> <span class="toc-text">tmpfs注册文件系统</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-number">4.1.2.</span> <span class="toc-text">文件系统上下文</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B6%85%E7%BA%A7%E5%9D%97%E5%A1%AB%E5%85%85"><span class="toc-number">4.1.3.</span> <span class="toc-text">超级块填充</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAinode%E6%97%B6%E8%AE%BE%E7%BD%AE%E6%96%87%E4%BB%B6%E6%93%8D%E4%BD%9C%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0%E8%A1%A8"><span class="toc-number">4.1.4.</span> <span class="toc-text">创建inode时设置文件操作回调函数表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%89%93%E5%BC%80%E6%96%87%E4%BB%B6%E6%97%B6%E5%85%B3%E8%81%94file-f-op"><span class="toc-number">4.1.5.</span> <span class="toc-text">打开文件时关联file-&gt;f_op</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BB%E6%B5%81%E7%A8%8B"><span class="toc-number">4.2.</span> <span class="toc-text">读流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E6%B5%81%E7%A8%8B"><span class="toc-number">4.3.</span> <span class="toc-text">写流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83"><span class="toc-number">5.</span> <span class="toc-text">参考</span></a></li></ol></div></div></div></div></main><footer id="footer"><div id="footer-wrap"></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/blog/js/utils.js"></script><script src="/blog/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
